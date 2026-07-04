@@ -4,9 +4,7 @@
 
 ## Overview
 
-Surveillance katana survival in a flat night-city arena. **Final game:** one rotatable CCTV feed, manual pan, one slash button, no auto-aim. The operator body does not move.
-
-**Playable now:** fixed surveillance mount overlooking the arena; mouse pans, LMB slashes, M/N jog the camera forward/stop (voice stand-in).
+Surveillance katana survival in a flat night-city arena. **Design target:** CCTV feed (see spec). **Current build:** first-person movement restored — WASD, mouse look, LMB slash.
 
 - **Engine:** Summer Engine (Godot 4.6)
 - **Main scene:** `main.tscn`
@@ -16,39 +14,33 @@ Surveillance katana survival in a flat night-city arena. **Final game:** one rot
 
 ## Design Direction (Major Pivot — 2026-07-04)
 
-| Phase | View | Camera control | Combat |
-|-------|------|----------------|--------|
-| **Shipped slice** | Single CCTV feed (`SurveillanceMount`) | Mouse pan + M/N jog forward/stop | LMB slash |
-| **Removed** | FPS body camera | WASD, jump | — |
-
-Full spec: `docs/superpowers/specs/2026-07-04-surveillance-camera-design.md`
-
-## Asset Policy
-
-Do not create assets from scratch (placeholder boxes, procedural meshes, etc.). Always search for ready-made assets first — free libraries, CC0 packs, Summer templates. Generate or model custom assets only if nothing suitable exists and the user asks for it. See `.summer/AGENTS.md`.
+| Phase | View | Control |
+|-------|------|---------|
+| **Current build** | First-person | WASD, mouse look, jump, LMB slash |
+| **Design target (not shipped)** | Single CCTV feed | Manual pan, voice jog — see spec |
 
 ## Controls
 
 | Input | Action |
 |-------|--------|
-| **Mouse** | Pan / rotate surveillance camera |
-| **Left mouse** | Katana slash (camera ray, no auto-aim) |
-| **M** | Jog camera forward along pan arc *(voice "move" stand-in)* |
-| **N** | Stop camera jog *(voice "stop" stand-in)* |
+| WASD | Move |
+| Mouse | Look |
+| Left mouse | Katana slash |
+| Space | Jump |
 | Esc | Pause |
 
-No WASD body movement. No auto-aim or auto camera tracking.
+## Asset Policy
+
+Do not create assets from scratch (placeholder boxes, procedural meshes, etc.). Always search for ready-made assets first — free libraries, CC0 packs, Summer templates. Generate or model custom assets only if nothing suitable exists and the user asks for it. See `.summer/AGENTS.md`.
 
 ## Current State
 
-### Operator / camera
+### Player
 
-- Static operator at arena center (`player/player.gd` — no locomotion)
-- Single rotatable CCTV mount (`SurveillanceMount`, `player/camera_controller.gd`)
-- Feed camera with katana viewmodel and slash ray (`FeedCamera`, `player/katana/`)
-- Voice jog bridge: `player/voice_jog_listener.gd` (M/N now; mic keywords later)
-- CC BY 3.0 katana model; procedural straight thrust trail on stab (`player/katana/katana_visual.gd`)
-- Slash hits via camera ray + tight shape query — no magnet hitboxes
+- First-person camera at head height (`player/camera_controller.gd`)
+- WASD movement, jump, mouse look (`player/player.gd`)
+- CC BY 3.0 katana on `PlayerCamera` viewmodel (`player/katana/`)
+- Katana slash via camera ray + animation (`player/melee_attack_area.gd` legacy nodes remain)
 
 ### Enemies
 
@@ -72,9 +64,9 @@ No WASD body movement. No auto-aim or auto camera tracking.
 | Path | Role |
 |------|------|
 | `main.tscn` | Playable level and enemy placement |
-| `player/player.gd` | Operator health, slash, static body |
-| `player/camera_controller.gd` | PTZ surveillance mount (pan + jog) |
-| `player/voice_jog_listener.gd` | M/N jog bridge for future mic commands |
+| `player/player.gd` | Movement, attack, damage |
+| `player/camera_controller.gd` | First-person camera |
+| `player/player.tscn` | Player scene and katana mount |
 | `enemies/humanoid_chaser.gd` | Chaser movement, contact damage, and death VFX |
 | `enemies/enemy_spawner.gd` | Timed enemy spawning around the player |
 
@@ -100,3 +92,4 @@ No WASD body movement. No auto-aim or auto camera tracking.
 - **Design decision:** v1 uses **one rotatable security camera** — no multi-post feed switching.
 - **Proposed:** microphone **"move"** / **"stop"** — camera jogs forward along its pan path, then stops (slash stays on button).
 - **Implemented surveillance slice:** removed WASD/jump locomotion; single `SurveillanceMount` CCTV feed; mouse pan, M/N jog, LMB slash from camera ray.
+- **Reverted surveillance slice** back to first-person WASD + mouse look per user request.

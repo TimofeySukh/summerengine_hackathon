@@ -14,10 +14,6 @@ You do not run the streets. You sit at one monitor, **turn a single security cam
 
 ## Current Build
 
-- `SurveillanceMount` CCTV feed — mouse pan, M/N jog, LMB slash
-- Static operator at arena center; chasers walk in and take contact damage
-- Design spec: `docs/superpowers/specs/2026-07-04-surveillance-camera-design.md`
-
-## Open Decision
-
-Slash zone shape; real mic keyword spotting vs keyboard jog only.
+- First-person: WASD, mouse look, Space jump, LMB katana slash
+- Night-city arena with humanoid chasers
+- Surveillance CCTV design remains documented for a future pass (`docs/superpowers/specs/2026-07-04-surveillance-camera-design.md`)
