@@ -11,6 +11,7 @@ const GAME_SCENE := "res://main.tscn"
 
 func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	WebcamLauncher.stop()
 	_play_button.pressed.connect(_on_play_pressed)
 	_sandbox_button.pressed.connect(_on_sandbox_pressed)
 	_quit_button.pressed.connect(_on_quit_pressed)
@@ -22,7 +23,7 @@ func _ready() -> void:
 func _setup_control_mode_options() -> void:
 	_control_mode.clear()
 	_control_mode.add_item("Keyboard — arrows / LMB slash", ControlMode.Mode.KEYBOARD)
-	_control_mode.add_item("Webcam — real hands via pose_stream", ControlMode.Mode.WEBCAM)
+	_control_mode.add_item("Webcam — hands drive katanas", ControlMode.Mode.WEBCAM)
 	_control_mode.select(ControlMode.mode)
 	_update_control_hint()
 
@@ -34,9 +35,9 @@ func _on_control_mode_selected(index: int) -> void:
 
 func _update_control_hint() -> void:
 	if ControlMode.is_webcam():
-		_control_hint.text = """Run before Play:
-cd tools/camera-controller && python pose_stream.py --game-bridge
-Left hand slash -> left katana. Right hand -> right katana. Torso turn -> look."""
+		_control_hint.text = """Webcam mode: camera starts with the game.
+Move your hands — katanas follow your wrists.
+Slash to attack. Turn your torso to look. WASD to move."""
 	else:
 		_control_hint.text = "WASD move · mouse look · <-/-> katana slashes"
 
@@ -50,8 +51,13 @@ func _on_play_pressed() -> void:
 func _on_sandbox_pressed() -> void:
 	GameSettings.set_sandbox_mode()
 	CameraInputBridge.reset_session()
+	if ControlMode.is_webcam():
+		WebcamLauncher.start()
+	else:
+		WebcamLauncher.stop()
 	get_tree().change_scene_to_file(GAME_SCENE)
 
 
 func _on_quit_pressed() -> void:
+	WebcamLauncher.stop()
 	get_tree().quit()

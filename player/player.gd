@@ -84,6 +84,10 @@ func _ready() -> void:
 	if ControlMode.is_webcam():
 		CameraInputBridge.reset_session()
 		_camera_controller.reset_webcam_yaw_baseline()
+		_katana_left.set_webcam_tracking(true)
+		_katana_right.set_webcam_tracking(true)
+		if not WebcamLauncher.is_running():
+			WebcamLauncher.start()
 	_grenade_aim_controller.visible = false
 	weapon_switched.emit(WEAPON_TYPE.keys()[0])
 
@@ -157,11 +161,12 @@ func _physics_process(delta: float) -> void:
 			_slash_with_katana(_katana_right)
 	else:
 		_poll_webcam_slash()
+		_update_webcam_katanas()
 		if CameraInputBridge.has_torso_yaw():
 			_camera_controller.apply_webcam_torso_yaw(CameraInputBridge.get_torso_yaw(), delta)
 		elif not _webcam_warned and not CameraInputBridge.is_stream_active():
 			_webcam_warned = true
-			push_warning("Webcam mode: start tools/camera-controller/pose_stream.py --game-bridge")
+			push_warning("Webcam mode: waiting for pose_stream camera feed...")
 
 	velocity.y += _gravity * delta
 
@@ -208,6 +213,15 @@ func _poll_webcam_slash() -> void:
 			_slash_with_katana(_katana_left)
 		"right":
 			_slash_with_katana(_katana_right)
+
+
+func _update_webcam_katanas() -> void:
+	if not CameraInputBridge.has_hands():
+		return
+	var left := CameraInputBridge.get_left_hand_offset()
+	var right := CameraInputBridge.get_right_hand_offset()
+	_katana_left.set_webcam_hand_offset(left.x, left.y)
+	_katana_right.set_webcam_hand_offset(right.x, right.y)
 
 
 func _slash_with_katana(katana: KatanaVisual) -> void:

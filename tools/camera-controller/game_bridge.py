@@ -6,6 +6,8 @@ import json
 import socket
 from typing import Literal
 
+from hand_tracker import HandFrame
+
 Hand = Literal["left", "right"]
 
 
@@ -31,3 +33,16 @@ class GameBridge:
 
     def send_yaw(self, deg: float) -> None:
         self._send({"v": 1, "type": "yaw", "deg": round(deg, 2)})
+
+    def send_hands(self, frame: HandFrame, *, yaw_deg: float | None = None) -> None:
+        payload = {
+            "v": 1,
+            "type": "hands",
+            "lx": round(frame.lx, 4),
+            "ly": round(frame.ly, 4),
+            "rx": round(frame.rx, 4),
+            "ry": round(frame.ry, 4),
+        }
+        if yaw_deg is not None:
+            payload["deg"] = round(yaw_deg, 2)
+        self._send(payload)

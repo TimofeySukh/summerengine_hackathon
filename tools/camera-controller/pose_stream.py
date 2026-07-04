@@ -18,6 +18,7 @@ from mjpeg_reader import MjpegStreamReader
 from slash_detector import SlashDetector, draw_slash_overlay, draw_wrist_markers
 from torso_tracker import TorsoTracker, draw_torso_widget
 from game_bridge import GameBridge
+from hand_tracker import compute_hand_frame
 from mediapipe.tasks import python as mp_tasks
 from mediapipe.tasks.python.vision import drawing_styles, drawing_utils
 from mediapipe.tasks.python import vision
@@ -380,7 +381,10 @@ def main() -> int:
                 if last_landmarks is not None:
                     poses_since_report += 1
                     torso_yaw = torso_tracker.update(last_landmarks)
-                    if game_bridge is not None and torso_yaw is not None:
+                    hand_frame = compute_hand_frame(last_landmarks)
+                    if game_bridge is not None and hand_frame is not None:
+                        game_bridge.send_hands(hand_frame, yaw_deg=torso_yaw)
+                    elif game_bridge is not None and torso_yaw is not None:
                         game_bridge.send_yaw(torso_yaw)
                     if key_controller is not None and not args.no_motion_keys:
                         key_controller.update_camera_yaw(

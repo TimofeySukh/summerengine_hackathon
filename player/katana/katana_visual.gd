@@ -36,6 +36,10 @@ const HAND_LAYOUT := {
 
 @export var hand: Hand = Hand.RIGHT
 
+@export var webcam_pos_scale := Vector2(0.52, 0.62)
+@export var webcam_max_offset := 0.38
+@export var webcam_smoothing := 18.0
+
 signal slash_struck
 
 @onready var _pivot: Node3D = $SlashPivot
@@ -45,6 +49,8 @@ var _idle_pos: Vector3
 var _idle_pivot: Vector3
 var _cut_pos: Vector3
 var _cut_pivot: Vector3
+var _webcam_tracking := false
+var _webcam_target_pos: Vector3
 
 
 func _ready() -> void:
@@ -52,6 +58,25 @@ func _ready() -> void:
 	_setup_mesh()
 	reset_pose()
 	_boost_materials(_pivot)
+	set_process(false)
+
+
+func set_webcam_tracking(enabled: bool) -> void:
+	_webcam_tracking = enabled
+	set_process(enabled)
+
+
+func set_webcam_hand_offset(offset_x: float, offset_y: float) -> void:
+	var ox := clampf(offset_x * webcam_pos_scale.x, -webcam_max_offset, webcam_max_offset)
+	var oy := clampf(offset_y * webcam_pos_scale.y, -webcam_max_offset, webcam_max_offset)
+	_webcam_target_pos = _idle_pos + Vector3(ox, oy, 0.0)
+
+
+func _process(delta: float) -> void:
+	if not _webcam_tracking or is_slashing():
+		return
+	position = position.lerp(_webcam_target_pos, minf(1.0, delta * webcam_smoothing))
+	_pivot.rotation = _idle_pivot
 
 
 func is_slashing() -> bool:
@@ -61,7 +86,11 @@ func is_slashing() -> bool:
 func reset_pose() -> void:
 	if _tween and _tween.is_valid():
 		_tween.kill()
-	_apply_pose(_idle_pos, _idle_pivot)
+	if _webcam_tracking:
+		position = _webcam_target_pos
+		_pivot.rotation = _idle_pivot
+	else:
+		_apply_pose(_idle_pos, _idle_pivot)
 
 
 func play_slash() -> void:
@@ -71,9 +100,35 @@ func play_slash() -> void:
 	if _tween and _tween.is_valid():
 		_tween.kill()
 
+	var slash_from := position if _webcam_tracking else _idle_pos
+	var slash_from_pivot := _pivot.rotation if _webcam_tracking else _idle_pivot
+	var slash_to := _cut_pos if not _webcam_tracking else _webcam_target_pos + (_cut_pos - _idle_pos)
+	var slash_to_pivot := _cut_pivot
+
 	_tween = create_tween()
 	_tween.set_parallel(true)
-	_tween.tween_method(_apply_slash_progress, 0.0, 1.0, SLASH_DURATION)
+	_tween.tween_method(
+		func(progress: float) -> void:
+			if progress <= SLASH_PEAK:
+				var local_t := progress / SLASH_PEAK
+				local_t = pow(local_t, 0.70)
+				_apply_pose(
+					slash_from.lerp(slash_to, local_t),
+					slash_from_pivot.lerp(slash_to_pivot, local_t)
+				)
+			else:
+				var local_t := (progress - SLASH_PEAK) / (1.0 - SLASH_PEAK)
+				local_t = 1.0 - pow(1.0 - local_t, 2.0)
+				var return_pos := _webcam_target_pos if _webcam_tracking else _idle_pos
+				var return_pivot := _idle_pivot
+				_apply_pose(
+					slash_to.lerp(return_pos, local_t),
+					slash_to_pivot.lerp(return_pivot, local_t)
+				),
+		0.0,
+		1.0,
+		SLASH_DURATION
+	)
 	_tween.tween_callback(func(): slash_struck.emit()).set_delay(HIT_TIME)
 
 

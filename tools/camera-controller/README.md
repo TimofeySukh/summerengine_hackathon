@@ -17,12 +17,13 @@ The pose model (`models/pose_landmarker_lite.task`) is bundled; other variants d
 
 **For Heat Wave (webcam control mode):**
 
-```bash
-./run_for_game.sh
-# or: python pose_stream.py --game-bridge
-```
+Select **Webcam** on the main menu and press Play — the game auto-starts `pose_stream.py` in the background.
 
-Select **Webcam** on the main menu, start this script, then press Play in the game.
+Manual debug preview:
+
+```bash
+./run_for_game.sh --display
+```
 
 **Standalone preview (arrow keys only, no game):**
 
@@ -40,8 +41,8 @@ When `--game-bridge` is on, slash and torso-yaw events go to Godot autoload `Cam
 
 | Message | Effect in game |
 |---------|----------------|
-| `{"type":"slash","hand":"left\|right"}` | Triggers left/right katana slash |
-| `{"type":"yaw","deg":12.5}` | Rotates first-person view from torso |
+| `{"type":"hands","lx","ly","rx","ry","deg"?}` | Katana positions follow wrists; optional torso yaw |
+| `{"type":"slash","hand":"left\|right"}` | Triggers slash animation + hit |
 
 With `--game-bridge`, local arrow-key emulation is off unless you pass `--also-keys`. Without `--game-bridge`, torso yaw can hold `Q` / `E` for camera rotation and wrist slashes tap the arrow keys.
 
@@ -51,7 +52,7 @@ With `--game-bridge`, local arrow-key emulation is off unless you pass `--also-k
 |------|------|
 | `pose_stream.py` | Main loop: MJPEG → pose → HUD, torso motion, slash FX, optional key emulation |
 | `mjpeg_reader.py` | Persistent HTTP MJPEG capture |
-| `torso_tracker.py` | Torso yaw estimate from shoulder/hip landmarks |
+| `hand_tracker.py` | Torso center + wrist offsets for viewmodel placement |
 | `slash_detector.py` | Wrist-speed slash detection (left/right hand) |
 | `key_controller.py` | Q/E camera motion and arrow-key slash emulation via pynput |
 | `game_bridge.py` | UDP sender to Godot `CameraInputBridge` (port 9847) |
