@@ -7,6 +7,7 @@ const STALE_MS := 2000
 
 var _peer: PacketPeerUDP
 var _slash_queue: Array[String] = []
+var _voice_wave_queue := 0
 var _left_hand_offset := Vector2.ZERO
 var _right_hand_offset := Vector2.ZERO
 var _has_hands := false
@@ -36,6 +37,13 @@ func poll_slash() -> String:
 	return _slash_queue.pop_front()
 
 
+func poll_voice_wave() -> bool:
+	if _voice_wave_queue <= 0:
+		return false
+	_voice_wave_queue -= 1
+	return true
+
+
 func get_left_hand_offset() -> Vector2:
 	return _left_hand_offset
 
@@ -62,6 +70,7 @@ func is_stream_active() -> bool:
 
 func reset_session() -> void:
 	_slash_queue.clear()
+	_voice_wave_queue = 0
 	_has_hands = false
 	_has_preview = false
 	_left_hand_offset = Vector2.ZERO
@@ -82,6 +91,8 @@ func _parse_packet(raw: String) -> void:
 			var hand := str(data.get("hand", ""))
 			if hand == "left" or hand == "right":
 				_slash_queue.append(hand)
+		"voice_wave":
+			_voice_wave_queue += 1
 		"hands":
 			_left_hand_offset = Vector2(float(data.get("lx", 0.0)), float(data.get("ly", 0.0)))
 			_right_hand_offset = Vector2(float(data.get("rx", 0.0)), float(data.get("ry", 0.0)))

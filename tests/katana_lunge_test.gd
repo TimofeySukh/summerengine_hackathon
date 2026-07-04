@@ -56,8 +56,11 @@ func _run_test() -> void:
 
 	var start_pos := player.global_position
 	player._begin_attack_lunge()
-	for _i in 10:
-		player._apply_attack_lunge(KatanaVisual.HIT_TIME / 10.0)
+	player._katana_right.play_slash()
+	for _i in 30:
+		player._apply_attack_lunge(KatanaVisual.SLASH_DURATION / 30.0)
+		player.velocity.y = 0.0
+		player.move_and_slide()
 		await process_frame
 
 	var moved_z := player.global_position.z - start_pos.z

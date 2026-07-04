@@ -13,9 +13,9 @@ enum WEAPON_TYPE { DEFAULT, GRENADE }
 ## Speed of shot bullets.
 @export var bullet_speed := 10.0
 ## Max range to lock onto an enemy for a katana lunge.
-@export var attack_lunge_target_range := 10.0
-## Maximum dash distance when a valid enemy is ahead.
 @export var attack_lunge_max_range := 24.0
+## Sprint speed during attack dash (m/s). Feels like an instant burst run, not a teleport.
+@export var attack_lunge_speed := 78.0
 ## How far from the enemy center the lunge stops (melee reach).
 @export var attack_lunge_stop_margin := 0.35
 ## Forward lunge distance when no enemy is targeted.
@@ -25,19 +25,23 @@ enum WEAPON_TYPE { DEFAULT, GRENADE }
 ## Half-angle of the katana hit cone in degrees.
 @export var katana_hit_half_arc_deg := 40.0
 ## Max range to track an enemy for soft aim assist.
-@export var chain_target_range := 18.0
+@export var soft_aim_max_range := 52.0
+## Legacy alias kept for inspector compatibility; soft aim uses soft_aim_max_range.
+@export var chain_target_range := 52.0
 ## Wider hit arc used for a queued chain target.
 @export var chain_melee_half_arc_deg := 52.0
-## How quickly the camera drifts toward the assist target on the ground.
-@export var chain_aim_speed := 4.5
-## Assist only pulls when the target is within this angle (never pulls for behind).
-@export var chain_aim_max_offset_deg := 68.0
-## Chain lunge only triggers once look is roughly aligned with the target.
-@export var chain_lunge_align_deg := 32.0
+## Cone used only when acquiring a new soft lock (degrees, half-angle).
+@export var soft_lock_acquire_half_angle_deg := 115.0
+## Camera turn speed during soft aim assist (deg/s).
+@export var soft_aim_turn_deg := 480.0
+## Extra turn speed multiplier when the locked target is far away.
+@export var soft_aim_far_boost := 1.45
+## Camera turn speed when reacting to a rear threat (deg/s).
+@export var threat_aim_turn_deg := 680.0
+## Max camera snap on attack start (deg).
+@export var attack_snap_turn_deg := 140.0
 ## After taking a hit, turn toward the attacker for this many seconds.
 @export var threat_focus_duration := 1.35
-## Faster camera pull when reacting to a rear threat.
-@export var threat_aim_speed_multiplier := 2.8
 ## Movement acceleration (how fast character achieve maximum speed)
 @export var acceleration := 4.0
 ## Jump impulse
@@ -58,6 +62,10 @@ enum WEAPON_TYPE { DEFAULT, GRENADE }
 @export var max_health := 100.0
 ## Fraction of max health restored when the player kills an enemy.
 @export_range(0.0, 1.0, 0.01) var kill_heal_percent := 0.25
+## Cooldown for the voice-triggered WAVE superpower.
+@export var voice_wave_cooldown := 4.0
+## Outward force applied when WAVE clears enemies.
+@export var voice_wave_force := 28.0
 
 @onready var _rotation_root: Node3D = $CharacterRotationRoot
 @onready var _camera_controller: CameraController = $CameraController
@@ -86,14 +94,13 @@ enum WEAPON_TYPE { DEFAULT, GRENADE }
 @onready var _grenade_cooldown_tick := grenade_cooldown
 
 var _lunge_active := false
-var _lunge_start := Vector3.ZERO
-var _lunge_end := Vector3.ZERO
-var _lunge_elapsed := 0.0
+var _lunge_direction := Vector3.ZERO
+var _lunge_remaining := 0.0
 var _lunge_target: Node3D = null
-var _chain_target: Node3D = null
-var _threat_focus_until := 0.0
+var _combat_targeting := CombatTargeting.new()
 var _is_dead := false
 var _webcam_warned := false
+var _voice_wave_timer := 0.0
 
 
 func _ready() -> void:
@@ -137,6 +144,7 @@ func _physics_process(delta: float) -> void:
 	var is_air_boosting := Input.is_action_pressed("jump") and not is_on_floor() and velocity.y > 0.0
 	var is_just_on_floor := is_on_floor() and not _is_on_floor_buffer
 
+	_voice_wave_timer = maxf(0.0, _voice_wave_timer - delta)
 	_is_on_floor_buffer = is_on_floor()
 	_move_direction = _get_camera_oriented_input()
 
@@ -144,8 +152,7 @@ func _physics_process(delta: float) -> void:
 	_last_strong_direction.y = 0.0
 	if _last_strong_direction.length_squared() > 0.0001:
 		_last_strong_direction = _last_strong_direction.normalized()
-	_refresh_assist_target()
-	_update_chain_aim_assist(delta)
+	_combat_targeting.update(self, _camera_controller, delta)
 
 	_orient_character_to_direction(_last_strong_direction, delta)
 
@@ -153,7 +160,6 @@ func _physics_process(delta: float) -> void:
 	velocity.y = 0.0
 	if _lunge_active:
 		_apply_attack_lunge(delta)
-		velocity = Vector3.ZERO
 	elif _is_katana_slashing():
 		velocity = Vector3.ZERO
 	else:
@@ -183,6 +189,7 @@ func _physics_process(delta: float) -> void:
 			_slash_with_katana(_katana_right)
 	else:
 		_poll_webcam_slash()
+		_poll_voice_wave()
 		_update_webcam_katanas()
 		if not _webcam_warned and not CameraInputBridge.is_stream_active():
 			_webcam_warned = true
@@ -201,9 +208,10 @@ func _physics_process(delta: float) -> void:
 		_character_skin.fall()
 	elif is_on_floor():
 		var xz_velocity := Vector3(velocity.x, 0, velocity.z)
-		if xz_velocity.length() > stopping_speed:
+		if _lunge_active or xz_velocity.length() > stopping_speed:
 			_character_skin.set_moving(true)
-			_character_skin.set_moving_speed(inverse_lerp(0.0, move_speed, xz_velocity.length()))
+			var speed_ref := attack_lunge_speed if _lunge_active else move_speed
+			_character_skin.set_moving_speed(inverse_lerp(0.0, speed_ref, xz_velocity.length()))
 		else:
 			_character_skin.set_moving(false)
 
@@ -244,12 +252,68 @@ func _update_webcam_katanas() -> void:
 	_katana_right.set_webcam_hand_offset(right.x, right.y)
 
 
+func _poll_voice_wave() -> void:
+	if CameraInputBridge.poll_voice_wave():
+		_trigger_voice_wave()
+
+
+func _trigger_voice_wave() -> void:
+	if _voice_wave_timer > 0.0:
+		return
+	_voice_wave_timer = voice_wave_cooldown
+
+	var killed_any := false
+	for node in get_tree().get_nodes_in_group("enemies"):
+		if not node is Node3D:
+			continue
+		var body := node as Node3D
+		if body.has_method("is_alive") and not body.is_alive():
+			continue
+		if not body.has_method("damage"):
+			continue
+
+		var direction := body.global_position - global_position
+		direction.y = 0.0
+		if direction.length_squared() < 0.0001:
+			direction = -_camera_controller.get_flat_forward()
+		if direction.length_squared() < 0.0001:
+			direction = Vector3.FORWARD
+		direction = direction.normalized()
+		body.damage(Vector3.ZERO, direction * voice_wave_force)
+		killed_any = true
+
+	if killed_any:
+		_combat_feel.play_kill_feedback()
+
+
 func _slash_with_katana(katana: KatanaVisual) -> void:
 	if katana.is_slashing():
 		return
+	_combat_targeting.on_attack(self, _camera_controller)
 	_begin_attack_lunge()
 	katana.play_slash()
 	_character_skin.punch()
+
+
+func is_katana_slashing() -> bool:
+	return _is_katana_slashing()
+
+
+func sync_facing_from_camera() -> void:
+	_last_strong_direction = _camera_controller.get_flat_forward()
+	if _last_strong_direction.length_squared() < 0.0001:
+		_last_strong_direction = _camera_controller.global_transform.basis * Vector3.FORWARD
+		_last_strong_direction.y = 0.0
+	if _last_strong_direction.length_squared() > 0.0001:
+		_last_strong_direction = _last_strong_direction.normalized()
+
+
+func get_facing_direction() -> Vector3:
+	var forward := _last_strong_direction
+	forward.y = 0.0
+	if forward.length_squared() > 0.0001:
+		return forward.normalized()
+	return _camera_controller.get_flat_forward()
 
 
 func _is_katana_slashing() -> bool:
@@ -262,73 +326,77 @@ func perform_katana_hit() -> void:
 
 func _begin_attack_lunge() -> void:
 	_lunge_active = false
-	_lunge_elapsed = 0.0
+	_lunge_remaining = 0.0
 	_lunge_target = null
+	_lunge_direction = Vector3.ZERO
 
 	var lunge := _compute_attack_lunge()
 	if lunge.distance < 0.05:
 		return
 
 	_lunge_target = lunge.get("target")
-	_lunge_start = global_position
-	_lunge_end = global_position + lunge.direction * lunge.distance
+	_lunge_direction = lunge.direction
+	_lunge_remaining = lunge.distance
 	_lunge_active = true
 
 
 func _apply_attack_lunge(delta: float) -> void:
 	if not _lunge_active:
 		return
+	if not _is_katana_slashing():
+		_end_lunge()
+		return
 
-	_lunge_elapsed += delta
-	var duration := KatanaVisual.HIT_TIME
-	var t := clampf(_lunge_elapsed / duration, 0.0, 1.0)
-	t = 1.0 - pow(1.0 - t, 2.0)
-	global_position = _lunge_start.lerp(_lunge_end, t)
+	if _lunge_target != null and is_instance_valid(_lunge_target):
+		var to_target := _lunge_target.global_position - global_position
+		to_target.y = 0.0
+		if to_target.length_squared() > 0.01:
+			var stop_distance := attack_lunge_stop_margin + _get_body_collision_radius(_lunge_target)
+			if to_target.length() <= stop_distance + 0.15:
+				_end_lunge()
+				return
+			_lunge_direction = to_target.normalized()
+			_camera_controller.rotate_toward_direction(
+				_lunge_direction,
+				deg_to_rad(threat_aim_turn_deg) * delta
+			)
+			sync_facing_from_camera()
 
-	if _lunge_elapsed >= duration:
-		global_position = _lunge_end
-		_lunge_active = false
+	var step := attack_lunge_speed * delta
+	if step >= _lunge_remaining:
+		step = _lunge_remaining
+		_end_lunge()
+	else:
+		_lunge_remaining -= step
+
+	velocity.x = _lunge_direction.x * attack_lunge_speed
+	velocity.z = _lunge_direction.z * attack_lunge_speed
+
+
+func _end_lunge() -> void:
+	_lunge_active = false
+	_lunge_remaining = 0.0
+	velocity.x = 0.0
+	velocity.z = 0.0
 
 
 func _compute_attack_lunge() -> Dictionary:
 	var origin := global_position
-	var target := _pick_front_lunge_target(origin)
+	var target := _combat_targeting.pick_lunge_target(self, _camera_controller)
 	if target != null:
 		return _lunge_toward_node(target, origin, attack_lunge_max_range)
 	return _lunge_forward(origin, attack_lunge_fallback_distance)
 
 
-func _pick_front_lunge_target(origin: Vector3) -> Node3D:
-	_refresh_assist_target()
-	if _should_use_chain_lunge(origin):
-		return _chain_target
-
-	var aim_collider := _camera_controller.get_aim_collider()
-	if aim_collider is Node3D:
-		var body := aim_collider as Node3D
-		if body.is_in_group("damageables") and body != self and _is_in_front_cone(origin, body.global_position, 58.0):
-			if not body.has_method("is_alive") or body.is_alive():
-				var flat_dist := Vector2(body.global_position.x - origin.x, body.global_position.z - origin.z).length()
-				if flat_dist <= attack_lunge_max_range:
-					return body
-
-	return _find_nearest_damageable(origin, attack_lunge_max_range, 72.0)
-
-
-func _is_in_front_cone(origin: Vector3, target_pos: Vector3, half_angle_deg: float) -> bool:
-	var forward := _get_flat_forward()
+func _lunge_forward(origin: Vector3, distance: float) -> Dictionary:
+	var forward := _combat_targeting.get_aim_direction(self, _camera_controller)
 	if forward.length_squared() < 0.0001:
-		return false
+		forward = get_facing_direction()
+	if forward.length_squared() < 0.0001:
+		return {"direction": Vector3.ZERO, "distance": 0.0, "target": null}
 
-	var offset := target_pos - origin
-	offset.y = 0.0
-	if offset.length_squared() < 0.0001:
-		return false
-
-	var facing := offset.normalized().dot(forward)
-	if facing <= 0.0:
-		return false
-	return facing >= cos(deg_to_rad(half_angle_deg))
+	var travel := _clamp_lunge_travel(origin, forward, distance)
+	return {"direction": forward, "distance": travel, "target": null}
 
 
 func _lunge_toward_node(target: Node3D, origin: Vector3, max_travel: float = -1.0) -> Dictionary:
@@ -351,15 +419,6 @@ func _lunge_toward_node(target: Node3D, origin: Vector3, max_travel: float = -1.
 	travel = minf(travel, max_travel)
 	travel = _clamp_lunge_travel(origin, direction, travel)
 	return {"direction": direction, "distance": travel, "target": target}
-
-
-func _lunge_forward(origin: Vector3, distance: float) -> Dictionary:
-	var forward := _get_attack_forward()
-	if forward.length_squared() < 0.0001:
-		return {"direction": Vector3.ZERO, "distance": 0.0, "target": null}
-
-	var travel := _clamp_lunge_travel(origin, forward, distance)
-	return {"direction": forward, "distance": travel, "target": null}
 
 
 func _clamp_lunge_travel(origin: Vector3, direction: Vector3, max_travel: float) -> float:
@@ -385,37 +444,6 @@ func _raycast_lunge_distance(origin: Vector3, direction: Vector3, max_distance: 
 
 	var hit_distance := ray_origin.distance_to(hit.position) - body_radius - 0.15
 	return clampf(hit_distance, 0.0, max_distance)
-
-
-func _find_nearest_damageable(origin: Vector3, max_range: float, half_angle_deg: float = 55.0) -> Node3D:
-	var forward := _get_attack_forward()
-	if forward.length_squared() < 0.0001:
-		return null
-
-	var best: Node3D = null
-	var best_distance := max_range
-	var cos_limit := cos(deg_to_rad(half_angle_deg))
-
-	for node in get_tree().get_nodes_in_group("damageables"):
-		if node == self or not node is Node3D:
-			continue
-
-		var body := node as Node3D
-		var offset := body.global_position - origin
-		offset.y = 0.0
-		var distance := offset.length()
-		if distance > max_range or distance < 0.05:
-			continue
-
-		var facing := offset.normalized().dot(forward)
-		if facing <= 0.0 or facing < cos_limit:
-			continue
-
-		if distance < best_distance:
-			best = body
-			best_distance = distance
-
-	return best
 
 
 func shoot() -> void:
@@ -464,7 +492,7 @@ func take_damage(amount: float, attacker: Node3D = null) -> void:
 	if _is_dead:
 		return
 
-	_focus_threat(attacker)
+	_combat_targeting.on_threat(self, attacker)
 	_health = maxf(0.0, _health - amount)
 	_update_health_ui()
 	if _health <= 0.0:
@@ -475,6 +503,7 @@ func _die() -> void:
 	_is_dead = true
 	_lunge_active = false
 	_lunge_target = null
+	_combat_targeting.reset()
 	velocity = Vector3.ZERO
 	player_died.emit()
 
@@ -488,8 +517,9 @@ func respawn() -> void:
 	global_position = _start_position
 	velocity = Vector3.ZERO
 	_lunge_active = false
-	_lunge_elapsed = 0.0
+	_lunge_remaining = 0.0
 	_lunge_target = null
+	_combat_targeting.reset()
 	_katana_left.reset_pose()
 	_katana_right.reset_pose()
 	_health = max_health
@@ -513,81 +543,22 @@ func _update_health_ui() -> void:
 
 
 func _hit_with_katana() -> void:
-	var forward := _get_flat_forward()
+	var forward := _combat_targeting.get_aim_direction(self, _camera_controller)
+	if forward.length_squared() < 0.0001:
+		forward = _get_flat_forward()
 	if forward.length_squared() < 0.0001:
 		return
 
 	var origin := global_position + Vector3.UP * 0.95
-	var hit_target := _find_best_melee_target(origin, forward)
+	var hit_target := _combat_targeting.pick_melee_target(self, _camera_controller, origin, forward)
+	if hit_target == null and _lunge_target != null and is_instance_valid(_lunge_target):
+		if _is_valid_melee_target(_lunge_target, origin, forward):
+			hit_target = _lunge_target
 	if hit_target == null:
 		return
 
 	var hit_position := _get_body_aim_point(hit_target, origin.y)
 	_damage_katana_target(hit_target, hit_position, forward)
-
-
-func _find_best_melee_target(origin: Vector3, forward: Vector3) -> Node3D:
-	var chain_target := _resolve_chain_melee_target(origin, forward)
-	if chain_target != null:
-		return chain_target
-
-	if _lunge_target != null and is_instance_valid(_lunge_target):
-		if _is_valid_melee_target(_lunge_target, origin, forward):
-			return _lunge_target
-
-	var aim_collider := _camera_controller.get_aim_collider()
-	if aim_collider is Node3D and _is_valid_melee_target(aim_collider as Node3D, origin, forward):
-		return aim_collider as Node3D
-
-	var shape_hit := _query_melee_shape(origin, forward)
-	if shape_hit != null:
-		return shape_hit
-
-	var best: Node3D = null
-	var best_score := -INF
-	for node in get_tree().get_nodes_in_group("damageables"):
-		if node == self or not node is Node3D:
-			continue
-		var body := node as Node3D
-		if not _is_valid_melee_target(body, origin, forward):
-			continue
-		var score := _score_melee_target(body, origin, forward)
-		if score > best_score:
-			best_score = score
-			best = body
-
-	return best
-
-
-func _query_melee_shape(origin: Vector3, forward: Vector3) -> Node3D:
-	var space_state := get_world_3d().direct_space_state
-	var capsule := CapsuleShape3D.new()
-	capsule.radius = 0.95
-	capsule.height = 2.4
-
-	var sweep_center := origin + forward * minf(katana_melee_range * 0.55, 1.8)
-	var basis := Basis.looking_at(forward, Vector3.UP)
-	var shape_query := PhysicsShapeQueryParameters3D.new()
-	shape_query.shape = capsule
-	shape_query.transform = Transform3D(basis, sweep_center)
-	shape_query.exclude = [get_rid()]
-	shape_query.collide_with_bodies = true
-	shape_query.collide_with_areas = false
-
-	var best: Node3D = null
-	var best_score := -INF
-	for hit in space_state.intersect_shape(shape_query, 16):
-		if not hit.has("collider") or not hit.collider is Node3D:
-			continue
-		var body := hit.collider as Node3D
-		if not _is_valid_melee_target(body, origin, forward):
-			continue
-		var score := _score_melee_target(body, origin, forward)
-		if score > best_score:
-			best_score = score
-			best = body
-
-	return best
 
 
 func _is_valid_melee_target(body: Node3D, origin: Vector3, forward: Vector3, half_arc_deg: float = -1.0) -> bool:
@@ -608,28 +579,12 @@ func _is_valid_melee_target(body: Node3D, origin: Vector3, forward: Vector3, hal
 	return facing >= cos(deg_to_rad(half_arc_deg))
 
 
-func _score_melee_target(body: Node3D, origin: Vector3, forward: Vector3) -> float:
-	var offset := body.global_position - origin
-	offset.y = 0.0
-	var distance := offset.length()
-	var facing := offset.normalized().dot(forward)
-	return facing * 3.0 - distance * 0.35
-
-
 func _get_flat_forward() -> Vector3:
 	var forward := _camera_controller.global_transform.basis * Vector3.FORWARD
 	forward.y = 0.0
 	if forward.length_squared() < 0.0001:
 		return Vector3.ZERO
 	return forward.normalized()
-
-
-func _get_attack_forward() -> Vector3:
-	var forward := _last_strong_direction
-	forward.y = 0.0
-	if forward.length_squared() > 0.0001:
-		return forward.normalized()
-	return _get_flat_forward()
 
 
 func _get_body_aim_point(body: Node3D, flat_y: float) -> Vector3:
@@ -665,225 +620,10 @@ func _damage_katana_target(target: Object, hit_position: Vector3, direction: Vec
 	if killed:
 		_heal_from_kill()
 		_combat_feel.play_kill_feedback()
-		_refresh_assist_target(body)
+		_combat_targeting.on_kill(self, _camera_controller, body)
 	elif was_alive:
 		_combat_feel.play_slash_feedback()
 	return killed
-
-
-func _is_chain_target_valid() -> bool:
-	return _chain_target != null and is_instance_valid(_chain_target) \
-		and (not _chain_target.has_method("is_alive") or _chain_target.is_alive())
-
-
-func _refresh_assist_target(prefer_exclude: Node3D = null) -> void:
-	if not ControlMode.is_keyboard() or not is_on_floor():
-		return
-
-	if _is_threat_focus_active() and _is_chain_target_valid() and _chain_target.is_in_group("damageables"):
-		return
-
-	_purge_stale_assist_target()
-
-	var candidate := _find_best_assist_target(global_position, prefer_exclude)
-	if candidate == null:
-		return
-
-	if _chain_target == null:
-		_chain_target = candidate
-		return
-
-	if prefer_exclude != null and _chain_target == prefer_exclude:
-		_chain_target = candidate
-		return
-
-	if not _is_target_in_front(_chain_target):
-		_chain_target = candidate
-		return
-
-	if candidate == _chain_target:
-		return
-
-	var current_dist := _flat_distance_to(_chain_target)
-	var candidate_dist := _flat_distance_to(candidate)
-	if candidate_dist + 1.5 < current_dist:
-		_chain_target = candidate
-
-
-func _purge_stale_assist_target() -> void:
-	if _chain_target == null or not is_instance_valid(_chain_target):
-		_chain_target = null
-		return
-	if _chain_target.has_method("is_alive") and not _chain_target.is_alive():
-		_chain_target = null
-		return
-	if not _is_threat_focus_active() and not _is_target_in_front(_chain_target):
-		_chain_target = null
-		return
-	if _flat_distance_to(_chain_target) > chain_target_range * 1.2:
-		_chain_target = null
-
-
-func _flat_distance_to(body: Node3D) -> float:
-	return Vector2(body.global_position.x - global_position.x, body.global_position.z - global_position.z).length()
-
-
-func _is_target_in_front(body: Node3D) -> bool:
-	return _is_in_front_cone(global_position, body.global_position, 89.0)
-
-
-func _find_best_assist_target(origin: Vector3, exclude: Node3D) -> Node3D:
-	var forward := _get_flat_forward()
-	if forward.length_squared() < 0.0001:
-		forward = _last_strong_direction
-	if forward.length_squared() < 0.0001:
-		forward = -global_transform.basis.z
-
-	var best: Node3D = null
-	var best_score := -INF
-
-	for node in get_tree().get_nodes_in_group("damageables"):
-		if node == self or node == exclude or not node is Node3D:
-			continue
-
-		var body := node as Node3D
-		if body.has_method("is_alive") and not body.is_alive():
-			continue
-
-		var offset := body.global_position - origin
-		offset.y = 0.0
-		var distance := offset.length()
-		if distance > chain_target_range or distance < 0.05:
-			continue
-
-		var facing := offset.normalized().dot(forward)
-		if facing <= 0.05:
-			continue
-
-		var score := facing * 4.0 - distance * 0.15
-		if score > best_score:
-			best_score = score
-			best = body
-
-	return best
-
-
-func _resolve_chain_melee_target(origin: Vector3, forward: Vector3) -> Node3D:
-	if not _is_chain_target_valid():
-		return null
-
-	var to_target := _chain_target.global_position - origin
-	to_target.y = 0.0
-	if to_target.length_squared() < 0.0001:
-		return null
-
-	var aim_forward := to_target.normalized()
-	if not _is_in_front_cone(origin, _chain_target.global_position, chain_melee_half_arc_deg):
-		return null
-	if _is_valid_melee_target(_chain_target, origin, aim_forward, chain_melee_half_arc_deg):
-		return _chain_target
-	if _is_valid_melee_target(_chain_target, origin, forward, chain_melee_half_arc_deg):
-		return _chain_target
-
-	return null
-
-
-func _should_use_chain_lunge(origin: Vector3) -> bool:
-	if not _is_chain_target_valid() or not is_on_floor():
-		return false
-
-	var to_target := _chain_target.global_position - origin
-	to_target.y = 0.0
-	if to_target.length_squared() < 0.0001:
-		return false
-
-	if _is_threat_focus_active():
-		return _flat_distance_to(_chain_target) <= attack_lunge_max_range
-
-	var forward := _get_flat_forward()
-	if forward.length_squared() < 0.0001:
-		return false
-
-	var facing := to_target.normalized().dot(forward)
-	if facing <= 0.0:
-		return false
-	return facing >= cos(deg_to_rad(chain_lunge_align_deg))
-
-
-func _update_chain_aim_assist(delta: float) -> void:
-	if not ControlMode.is_keyboard() or not is_on_floor() or _is_katana_slashing():
-		return
-	if _chain_target == null or not is_instance_valid(_chain_target):
-		return
-
-	var direction := _chain_target.global_position - global_position
-	direction.y = 0.0
-	if direction.length_squared() < 0.0001:
-		return
-	direction = direction.normalized()
-
-	var forward := _get_flat_forward()
-	if forward.length_squared() < 0.0001:
-		return
-
-	var facing := forward.dot(direction)
-	var threat_mode := _is_threat_focus_active()
-	if not threat_mode:
-		if facing <= 0.05:
-			return
-		var max_angle := deg_to_rad(chain_aim_max_offset_deg)
-		var angle := acos(clampf(facing, -1.0, 1.0))
-		if angle > max_angle:
-			return
-		var edge_factor := 1.0 - (angle / max_angle) * 0.45
-		var blend := minf(1.0, delta * chain_aim_speed * edge_factor)
-		_apply_aim_yaw(direction, blend)
-		return
-
-	var rear_factor := clampf(1.0 + (0.05 - facing) * 3.0, 1.0, threat_aim_speed_multiplier)
-	var blend_threat := minf(1.0, delta * chain_aim_speed * rear_factor)
-	_apply_aim_yaw(direction, blend_threat)
-
-
-func _apply_aim_yaw(direction: Vector3, blend: float) -> void:
-	var target_yaw := atan2(-direction.x, -direction.z)
-	_camera_controller._euler_rotation.y = lerp_angle(_camera_controller._euler_rotation.y, target_yaw, blend)
-	_camera_controller.transform.basis = Basis.from_euler(_camera_controller._euler_rotation)
-
-	_last_strong_direction = _camera_controller.global_transform.basis * Vector3.FORWARD
-	_last_strong_direction.y = 0.0
-	if _last_strong_direction.length_squared() > 0.0001:
-		_last_strong_direction = _last_strong_direction.normalized()
-
-
-func _focus_threat(attacker: Node3D = null) -> void:
-	var threat := attacker
-	if threat == null or not is_instance_valid(threat) or not threat.is_in_group("damageables"):
-		threat = _find_nearest_threat_any_direction()
-	if threat == null:
-		return
-	_chain_target = threat
-	_threat_focus_until = Time.get_ticks_msec() / 1000.0 + threat_focus_duration
-
-
-func _is_threat_focus_active() -> bool:
-	return Time.get_ticks_msec() / 1000.0 < _threat_focus_until
-
-
-func _find_nearest_threat_any_direction() -> Node3D:
-	var best: Node3D = null
-	var best_distance := chain_target_range
-	for node in get_tree().get_nodes_in_group("damageables"):
-		if node == self or not node is Node3D:
-			continue
-		var body := node as Node3D
-		if body.has_method("is_alive") and not body.is_alive():
-			continue
-		var distance := _flat_distance_to(body)
-		if distance < best_distance:
-			best_distance = distance
-			best = body
-	return best
 
 
 func _orient_character_to_direction(direction: Vector3, delta: float) -> void:

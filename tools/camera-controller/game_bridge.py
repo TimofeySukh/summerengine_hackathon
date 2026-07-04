@@ -41,6 +41,9 @@ class GameBridge:
     def send_slash(self, hand: Hand) -> None:
         self._send({"v": 1, "type": "slash", "hand": hand})
 
+    def send_voice_wave(self, confidence: float) -> None:
+        self._send({"v": 1, "type": "voice_wave", "confidence": round(confidence, 3)})
+
     def send_hands(self, frame: HandFrame) -> None:
         self._send(
             {

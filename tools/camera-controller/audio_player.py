@@ -7,6 +7,7 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from typing import Callable
 
 import numpy as np
 import sounddevice as sd
@@ -52,10 +53,14 @@ class BoardAudioPlayer:
         *,
         reconnect_delay: float = 2.0,
         read_chunk_bytes: int = 4096,
+        playback: bool = True,
+        chunk_callback: Callable[[bytes, int, int, int], None] | None = None,
     ):
         self.url = url
         self.reconnect_delay = reconnect_delay
         self.read_chunk_bytes = read_chunk_bytes
+        self.playback = playback
+        self.chunk_callback = chunk_callback
         self.connected = False
         self.last_error = ""
         self._stop = threading.Event()
@@ -94,23 +99,41 @@ class BoardAudioPlayer:
             dtype = np.int16 if sample_width == 2 else np.int8
             frame_bytes = sample_width * channels
 
-            with sd.OutputStream(
-                samplerate=sample_rate,
-                channels=channels,
-                dtype=dtype,
-            ) as out:
-                self.connected = True
-                self.last_error = ""
-                pending = b""
-                while not self._stop.is_set():
-                    chunk = response.read(self.read_chunk_bytes)
-                    if not chunk:
-                        self.connected = False
-                        break
-                    pending += chunk
-                    usable = len(pending) - (len(pending) % frame_bytes)
-                    if usable <= 0:
-                        continue
-                    pcm = pending[:usable]
-                    pending = pending[usable:]
-                    out.write(np.frombuffer(pcm, dtype=dtype))
+            if self.playback:
+                with sd.OutputStream(
+                    samplerate=sample_rate,
+                    channels=channels,
+                    dtype=dtype,
+                ) as out:
+                    self._read_audio_loop(response, out, sample_rate, channels, sample_width, frame_bytes, dtype)
+            else:
+                self._read_audio_loop(response, None, sample_rate, channels, sample_width, frame_bytes, dtype)
+
+    def _read_audio_loop(
+        self,
+        response,
+        out,
+        sample_rate: int,
+        channels: int,
+        sample_width: int,
+        frame_bytes: int,
+        dtype,
+    ) -> None:
+        self.connected = True
+        self.last_error = ""
+        pending = b""
+        while not self._stop.is_set():
+            chunk = response.read(self.read_chunk_bytes)
+            if not chunk:
+                self.connected = False
+                break
+            pending += chunk
+            usable = len(pending) - (len(pending) % frame_bytes)
+            if usable <= 0:
+                continue
+            pcm = pending[:usable]
+            pending = pending[usable:]
+            if self.chunk_callback is not None:
+                self.chunk_callback(pcm, sample_rate, channels, sample_width)
+            if out is not None:
+                out.write(np.frombuffer(pcm, dtype=dtype))

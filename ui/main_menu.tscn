@@ -1,8 +1,82 @@
-[gd_scene format=3 uid="uid://c8mainmenu001"]
+[gd_scene load_steps=10 format=3 uid="uid://c8mainmenu001"]
 
 [ext_resource type="Script" uid="uid://brcim1mosdaln" path="res://ui/main_menu.gd" id="1_main"]
 [ext_resource type="FontFile" uid="uid://ch2aef1jex81f" path="res://demo_page/fonts/Montserrat-Bold.ttf" id="2_font_bold"]
 [ext_resource type="FontFile" uid="uid://t50djx4didf7" path="res://demo_page/fonts/Montserrat-Medium.ttf" id="3_font_medium"]
+[ext_resource type="Texture2D" uid="uid://bisdpbdirkat6" path="res://demo_page/assets/demo_page_background.png" id="4_cover"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button"]
+bg_color = Color(0.07, 0.11, 0.16, 0.92)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.72, 0.88, 0.82, 0.38)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+content_margin_left = 18.0
+content_margin_top = 8.0
+content_margin_right = 18.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_hover"]
+bg_color = Color(0.16, 0.35, 0.3, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.9, 0.96, 0.72, 0.75)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+content_margin_left = 18.0
+content_margin_top = 8.0
+content_margin_right = 18.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_button_pressed"]
+bg_color = Color(0.9, 0.58, 0.22, 0.95)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 0.95, 0.72, 0.85)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+content_margin_left = 18.0
+content_margin_top = 8.0
+content_margin_right = 18.0
+content_margin_bottom = 8.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
+bg_color = Color(0.025, 0.04, 0.065, 0.9)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.82, 0.9, 0.76, 0.25)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0, 0, 0, 0.45)
+shadow_size = 18
+content_margin_left = 36.0
+content_margin_top = 32.0
+content_margin_right = 36.0
+content_margin_bottom = 32.0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slider"]
+bg_color = Color(0.08, 0.12, 0.15, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
 
 [node name="MainMenu" type="Control" unique_id=816205677]
 layout_mode = 3
@@ -13,23 +87,43 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_main")
 
-[node name="Background" type="ColorRect" parent="." unique_id=1989814172]
+[node name="BackgroundImage" type="TextureRect" parent="." unique_id=1989814172]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.045, 0.07, 0.12, 1)
+texture = ExtResource("4_cover")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="ImageShade" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.015, 0.025, 0.04, 0.54)
+
+[node name="LeftFade" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 13
+anchor_right = 0.5
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.015, 0.025, 0.04, 0.62)
 
 [node name="AccentTop" type="ColorRect" parent="." unique_id=828329045]
 layout_mode = 0
-offset_left = -40.0
-offset_top = 120.0
-offset_right = 520.0
-offset_bottom = 124.0
-rotation = -0.08
-color = Color(1, 0.05, 0.02, 0.85)
+offset_left = -80.0
+offset_top = 126.0
+offset_right = 720.0
+offset_bottom = 132.0
+rotation = -0.055
+color = Color(0.94, 0.68, 0.22, 0.9)
 
 [node name="AccentBottom" type="ColorRect" parent="." unique_id=1383602734]
 layout_mode = 1
@@ -45,100 +139,178 @@ offset_bottom = -176.0
 grow_horizontal = 0
 grow_vertical = 0
 rotation = -0.06
-color = Color(0, 0.35, 1, 0.75)
+color = Color(0.02, 0.78, 0.58, 0.72)
 
-[node name="CenterContainer" type="CenterContainer" parent="." unique_id=1504248722]
+[node name="SafeArea" type="MarginContainer" parent="." unique_id=1504248722]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_constants/margin_left = 108
+theme_override_constants/margin_top = 82
+theme_override_constants/margin_right = 108
+theme_override_constants/margin_bottom = 82
 
-[node name="MarginContainer" type="MarginContainer" parent="CenterContainer" unique_id=759519827]
+[node name="Layout" type="HBoxContainer" parent="SafeArea" unique_id=759519827]
 layout_mode = 2
-theme_override_constants/margin_left = 64
-theme_override_constants/margin_top = 64
-theme_override_constants/margin_right = 64
-theme_override_constants/margin_bottom = 64
-
-[node name="VBox" type="VBoxContainer" parent="CenterContainer/MarginContainer" unique_id=1411890590]
-layout_mode = 2
-theme_override_constants/separation = 32
+theme_override_constants/separation = 72
 alignment = 1
 
-[node name="Title" type="Label" parent="CenterContainer/MarginContainer/VBox" unique_id=880074307]
+[node name="MenuColumn" type="VBoxContainer" parent="SafeArea/Layout" unique_id=1411890590]
+custom_minimum_size = Vector2(460, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.92, 0.94, 0.98, 1)
-theme_override_fonts/font = ExtResource("2_font_bold")
-theme_override_font_sizes/font_size = 72
-text = "HEAT WAVE"
-horizontal_alignment = 1
+size_flags_horizontal = 0
+size_flags_vertical = 4
+theme_override_constants/separation = 22
+alignment = 1
 
-[node name="Subtitle" type="Label" parent="CenterContainer/MarginContainer/VBox" unique_id=157153241]
+[node name="Eyebrow" type="Label" parent="SafeArea/Layout/MenuColumn"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.55, 0.65, 0.82, 1)
-theme_override_fonts/font = ExtResource("3_font_medium")
-theme_override_font_sizes/font_size = 22
-text = "Survive the night-city arena"
-horizontal_alignment = 1
-
-[node name="Spacer" type="Control" parent="CenterContainer/MarginContainer/VBox" unique_id=1151066295]
-custom_minimum_size = Vector2(0, 24)
-layout_mode = 2
-
-[node name="ControlModeLabel" type="Label" parent="CenterContainer/MarginContainer/VBox" unique_id=951808703]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.7, 0.78, 0.9, 1)
+theme_override_colors/font_color = Color(0.94, 0.7, 0.28, 1)
 theme_override_fonts/font = ExtResource("3_font_medium")
 theme_override_font_sizes/font_size = 18
-text = "Control mode"
-horizontal_alignment = 1
+text = "DESERT ARENA"
 
-[node name="ControlModeOption" type="OptionButton" parent="CenterContainer/MarginContainer/VBox" unique_id=93988426]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(480, 44)
+[node name="Title" type="Label" parent="SafeArea/Layout/MenuColumn" unique_id=880074307]
 layout_mode = 2
-size_flags_horizontal = 4
-theme_override_fonts/font = ExtResource("3_font_medium")
-theme_override_font_sizes/font_size = 16
+theme_override_colors/font_color = Color(0.96, 0.97, 0.91, 1)
+theme_override_fonts/font = ExtResource("2_font_bold")
+theme_override_font_sizes/font_size = 86
+text = "SAND\nWAVE"
+vertical_alignment = 1
 
-[node name="ControlHint" type="Label" parent="CenterContainer/MarginContainer/VBox" unique_id=502859491]
-unique_name_in_owner = true
+[node name="Subtitle" type="Label" parent="SafeArea/Layout/MenuColumn" unique_id=157153241]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.45, 0.55, 0.72, 1)
+theme_override_colors/font_color = Color(0.72, 0.82, 0.78, 1)
 theme_override_fonts/font = ExtResource("3_font_medium")
-theme_override_font_sizes/font_size = 14
-text = "WASD move · mouse look · ←/→ katana slashes"
-horizontal_alignment = 1
+theme_override_font_sizes/font_size = 22
+text = "Survive the shifting arena"
 autowrap_mode = 2
 
-[node name="PlayButton" type="Button" parent="CenterContainer/MarginContainer/VBox" unique_id=1980707259]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(320, 56)
+[node name="Spacer" type="Control" parent="SafeArea/Layout/MenuColumn" unique_id=1151066295]
+custom_minimum_size = Vector2(0, 12)
 layout_mode = 2
-size_flags_horizontal = 4
+
+[node name="PlayButton" type="Button" parent="SafeArea/Layout/MenuColumn" unique_id=1980707259]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(360, 58)
+layout_mode = 2
 mouse_default_cursor_shape = 2
+theme_override_colors/font_color = Color(0.96, 0.97, 0.91, 1)
 theme_override_fonts/font = ExtResource("2_font_bold")
-theme_override_font_sizes/font_size = 28
+theme_override_font_sizes/font_size = 26
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
 text = "Play"
 
-[node name="SandboxButton" type="Button" parent="CenterContainer/MarginContainer/VBox" unique_id=918273645]
+[node name="SandboxButton" type="Button" parent="SafeArea/Layout/MenuColumn" unique_id=918273645]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(320, 56)
+custom_minimum_size = Vector2(360, 54)
 layout_mode = 2
-size_flags_horizontal = 4
 mouse_default_cursor_shape = 2
+theme_override_colors/font_color = Color(0.9, 0.93, 0.86, 1)
 theme_override_fonts/font = ExtResource("3_font_medium")
-theme_override_font_sizes/font_size = 24
-text = "Sandbox (No Enemies)"
+theme_override_font_sizes/font_size = 22
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+text = "Sandbox"
 
-[node name="QuitButton" type="Button" parent="CenterContainer/MarginContainer/VBox" unique_id=657250045]
+[node name="SettingsButton" type="Button" parent="SafeArea/Layout/MenuColumn"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(320, 56)
+custom_minimum_size = Vector2(360, 54)
 layout_mode = 2
-size_flags_horizontal = 4
 mouse_default_cursor_shape = 2
+theme_override_colors/font_color = Color(0.9, 0.93, 0.86, 1)
 theme_override_fonts/font = ExtResource("3_font_medium")
-theme_override_font_sizes/font_size = 24
+theme_override_font_sizes/font_size = 22
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+text = "Settings"
+
+[node name="QuitButton" type="Button" parent="SafeArea/Layout/MenuColumn" unique_id=657250045]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(360, 54)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+theme_override_colors/font_color = Color(0.9, 0.93, 0.86, 1)
+theme_override_fonts/font = ExtResource("3_font_medium")
+theme_override_font_sizes/font_size = 22
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
 text = "Quit"
+
+[node name="SettingsPanel" type="PanelContainer" parent="SafeArea/Layout"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(430, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 4
+theme_override_styles/panel = SubResource("StyleBoxFlat_panel")
+
+[node name="SettingsMargin" type="MarginContainer" parent="SafeArea/Layout/SettingsPanel"]
+layout_mode = 2
+
+[node name="SettingsVBox" type="VBoxContainer" parent="SafeArea/Layout/SettingsPanel/SettingsMargin"]
+layout_mode = 2
+theme_override_constants/separation = 18
+
+[node name="SettingsTitle" type="Label" parent="SafeArea/Layout/SettingsPanel/SettingsMargin/SettingsVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.96, 0.97, 0.91, 1)
+theme_override_fonts/font = ExtResource("2_font_bold")
+theme_override_font_sizes/font_size = 34
+text = "Settings"
+
+[node name="VolumeRow" type="HBoxContainer" parent="SafeArea/Layout/SettingsPanel/SettingsMargin/SettingsVBox"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="VolumeLabel" type="Label" parent="SafeArea/Layout/SettingsPanel/SettingsMargin/SettingsVBox/VolumeRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.72, 0.82, 0.78, 1)
+theme_override_fonts/font = ExtResource("3_font_medium")
+theme_override_font_sizes/font_size = 20
+text = "Volume"
+
+[node name="VolumeValueLabel" type="Label" parent="SafeArea/Layout/SettingsPanel/SettingsMargin/SettingsVBox/VolumeRow"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.94, 0.7, 0.28, 1)
+theme_override_fonts/font = ExtResource("3_font_medium")
+theme_override_font_sizes/font_size = 20
+text = "80%"
+horizontal_alignment = 2
+
+[node name="VolumeSlider" type="HSlider" parent="SafeArea/Layout/SettingsPanel/SettingsMargin/SettingsVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 36)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+min_value = 0.0
+max_value = 100.0
+step = 1.0
+value = 80.0
+theme_override_styles/slider = SubResource("StyleBoxFlat_slider")
+theme_override_styles/grabber_area = SubResource("StyleBoxFlat_slider")
+theme_override_styles/grabber_area_highlight = SubResource("StyleBoxFlat_slider")
+
+[node name="BackButton" type="Button" parent="SafeArea/Layout/SettingsPanel/SettingsMargin/SettingsVBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 50)
+layout_mode = 2
+mouse_default_cursor_shape = 2
+theme_override_colors/font_color = Color(0.9, 0.93, 0.86, 1)
+theme_override_fonts/font = ExtResource("3_font_medium")
+theme_override_font_sizes/font_size = 20
+theme_override_styles/normal = SubResource("StyleBoxFlat_button")
+theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
+text = "Back"

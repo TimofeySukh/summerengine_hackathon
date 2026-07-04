@@ -79,6 +79,7 @@ script = ExtResource("2_spawner")
 spawn_radius = 45.0
 spawn_y = 0.2
 min_spawn_distance = 18.0
+arena_half_extent = 118.0
 
 [node name="RunDirector" type="Node" parent="."]
 script = ExtResource("5_director")

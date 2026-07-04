@@ -100,3 +100,32 @@ func get_aim_collider() -> Node:
 		return _aim_collider
 	else:
 		return null
+
+
+func get_yaw() -> float:
+	return _euler_rotation.y
+
+
+func set_yaw(yaw: float) -> void:
+	_euler_rotation.x = 0.0
+	_euler_rotation.y = yaw
+	transform.basis = Basis.from_euler(_euler_rotation)
+
+
+func get_flat_forward() -> Vector3:
+	var forward := global_transform.basis * Vector3.FORWARD
+	forward.y = 0.0
+	if forward.length_squared() < 0.0001:
+		return Vector3.ZERO
+	return forward.normalized()
+
+
+func rotate_toward_direction(direction: Vector3, max_radians: float) -> void:
+	var flat := direction
+	flat.y = 0.0
+	if flat.length_squared() < 0.0001 or max_radians <= 0.0:
+		return
+	flat = flat.normalized()
+	var target_yaw := atan2(-flat.x, -flat.z)
+	var new_yaw := rotate_toward(_euler_rotation.y, target_yaw, max_radians)
+	set_yaw(new_yaw)

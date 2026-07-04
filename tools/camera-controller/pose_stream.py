@@ -19,12 +19,13 @@ from slash_detector import SlashDetector, draw_slash_overlay, draw_wrist_markers
 from game_bridge import GameBridge
 from hand_tracker import compute_hand_frame
 from hand_calibration import (
-    CalibratorPhase,
-    DEFAULT_CALIBRATION_PATH,
-    HandCalibrator,
-    HandCalibration,
-    load_calibration,
+	CalibratorPhase,
+	DEFAULT_CALIBRATION_PATH,
+	HandCalibrator,
+	HandCalibration,
+	load_calibration,
 )
+from voice_wave_detector import DEFAULT_MODEL_PATH, VoiceWaveDetector
 from mediapipe.tasks import python as mp_tasks
 from mediapipe.tasks.python.vision import drawing_styles, drawing_utils
 from mediapipe.tasks.python import vision
@@ -136,6 +137,34 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--status", default=DEFAULT_STATUS)
     parser.add_argument("--audio", default=DEFAULT_AUDIO, help="Board WAV audio stream URL")
     parser.add_argument("--no-audio", action="store_true", help="Disable microphone playback")
+    parser.add_argument(
+        "--no-voice-wave",
+        action="store_true",
+        help="Disable spoken WAVE superpower detection",
+    )
+    parser.add_argument(
+        "--voice-wave-model",
+        type=Path,
+        default=DEFAULT_MODEL_PATH,
+        help="Vosk model directory for WAVE recognition",
+    )
+    parser.add_argument(
+        "--no-voice-model-download",
+        action="store_true",
+        help="Do not download the default voice model if it is missing",
+    )
+    parser.add_argument(
+        "--voice-wave-threshold",
+        type=float,
+        default=0.7,
+        help="Minimum confidence for spoken WAVE detection",
+    )
+    parser.add_argument(
+        "--voice-wave-cooldown",
+        type=float,
+        default=3.0,
+        help="Seconds between voice wave superpower triggers",
+    )
     parser.add_argument("--no-keys", action="store_true", help="Disable arrow-key emulation")
     parser.add_argument(
         "--game-bridge",
@@ -297,11 +326,40 @@ def main() -> int:
         game_bridge = GameBridge(host=args.game_host, port=args.game_port)
         game_bridge.ping()
         print(f"Game bridge: UDP -> {args.game_host}:{args.game_port}")
+    voice_detector = None
+    if not args.no_voice_wave and game_bridge is not None:
+        voice_detector = VoiceWaveDetector(
+            on_wave=game_bridge.send_voice_wave,
+            model_path=args.voice_wave_model,
+            threshold=args.voice_wave_threshold,
+            cooldown_s=args.voice_wave_cooldown,
+            auto_download=not args.no_voice_model_download,
+        )
+        if voice_detector.available:
+            print(
+                "Voice wave: listening for WAVE "
+                f"(threshold {args.voice_wave_threshold:.2f}, cooldown {args.voice_wave_cooldown:.1f}s)"
+            )
+        else:
+            print(f"Voice wave disabled: {voice_detector.last_error}")
     audio_player = None
-    if not args.no_audio:
-        audio_player = BoardAudioPlayer(args.audio)
+    if not args.no_audio or voice_detector is not None:
+        voice_callback = None
+        if voice_detector is not None:
+            voice_callback = lambda pcm, sample_rate, channels, sample_width: voice_detector.accept_pcm(
+                pcm,
+                sample_rate=sample_rate,
+                channels=channels,
+                sample_width=sample_width,
+            )
+        audio_player = BoardAudioPlayer(
+            args.audio,
+            playback=not args.no_audio,
+            chunk_callback=voice_callback,
+        )
         audio_player.start()
-        print(f"Audio: {args.audio} (single client — close ffplay/other listeners first)")
+        playback_label = "playback on" if not args.no_audio else "playback off"
+        print(f"Audio: {args.audio} ({playback_label}; single client)")
     if key_controller is not None:
         print(f"Arrow keys: left hand -> Left, right hand -> Right ({key_controller.backend})")
 

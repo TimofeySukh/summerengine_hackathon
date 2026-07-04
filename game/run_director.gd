@@ -66,6 +66,21 @@ func _process(delta: float) -> void:
 	_emit_stats_if_changed()
 
 
+func _unhandled_input(event: InputEvent) -> void:
+	if _sandbox_mode or _is_player_dead():
+		return
+	if event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_G:
+		kill_all_wave_enemies()
+
+
+func kill_all_wave_enemies() -> void:
+	if _spawner == null or not _spawner.has_method("kill_all_enemies"):
+		return
+	_spawner.kill_all_enemies()
+	_enemies_remaining = 0
+	_emit_stats_if_changed(true)
+
+
 var _last_stats_signature := ""
 
 
