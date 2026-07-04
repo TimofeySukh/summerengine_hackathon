@@ -11,7 +11,7 @@ var _external_launch := false
 
 
 func is_running() -> bool:
-	if _external_launch or _is_pose_stream_running():
+	if _is_pose_stream_running():
 		return true
 	return _pid > 0 and OS.is_process_running(_pid)
 
@@ -47,12 +47,11 @@ func start() -> void:
 
 
 func stop() -> void:
+	# Never pkill pose_stream — the user may have started it manually in Terminal.
 	if _pid > 0 and OS.is_process_running(_pid):
 		OS.kill(_pid)
 	_pid = -1
 	_external_launch = false
-	if _is_pose_stream_running():
-		OS.execute("pkill", ["-f", POSE_MATCH], [], true, false)
 
 
 func _launch_macos_terminal(tools: String) -> void:
