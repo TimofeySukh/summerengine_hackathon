@@ -1,22 +1,28 @@
 extends Node3D
 
-const SLASH_DURATION := 0.34
-
+const SLASH_DURATION := 0.32
 const IDLE_POSITION := Vector3(0.14, -0.22, -0.52)
-const IDLE_PIVOT := Vector3(0.04, 0.10, -0.08)
-const CUT_OFFSET := Vector3(0.05, -0.07, -0.05)
+const IDLE_EULER := Vector3(0.0, 0.08, 0.0)
 
-const CHAMBER_PIVOT := Vector3(-0.22, 0.08, 0.38)
-const CUT_PIVOT := Vector3(0.26, 0.10, -0.68)
+const REST_TIP_DIR := Vector3(0.0, 0.0, -1.0)
+const CHAMBER_TIP_DIR := Vector3(-0.34, 0.44, -0.83).normalized()
+const CUT_TIP_DIR := Vector3(0.34, -0.44, -0.83).normalized()
 
-const CUT_END_T := 0.62
+const CHAMBER_END := 0.11
+const CUT_END := 0.24
 
 @onready var _slash_pivot: Node3D = $SlashPivot
 
 var _attack_tween: Tween
+var _slash_axis: Vector3
+var _chamber_angle: float
+var _cut_angle: float
 
 
 func _ready() -> void:
+	_slash_axis = CHAMBER_TIP_DIR.cross(CUT_TIP_DIR).normalized()
+	_chamber_angle = REST_TIP_DIR.signed_angle_to(CHAMBER_TIP_DIR, _slash_axis)
+	_cut_angle = REST_TIP_DIR.signed_angle_to(CUT_TIP_DIR, _slash_axis)
 	reset_pose()
 	_boost_materials(_slash_pivot)
 
@@ -25,7 +31,7 @@ func reset_pose() -> void:
 	if _attack_tween and _attack_tween.is_valid():
 		_attack_tween.kill()
 	position = IDLE_POSITION
-	_slash_pivot.rotation = IDLE_PIVOT
+	_apply_slash_angle(0.0)
 
 
 func play_slash() -> void:
@@ -33,20 +39,31 @@ func play_slash() -> void:
 		_attack_tween.kill()
 
 	_attack_tween = create_tween()
-	_attack_tween.tween_method(_apply_cut, 0.0, 1.0, SLASH_DURATION)
+	_attack_tween.tween_method(_apply_slash_progress, 0.0, 1.0, SLASH_DURATION)
 
 
-func _apply_cut(t: float) -> void:
-	if t <= CUT_END_T:
-		var cut_t := pow(t / CUT_END_T, 1.35)
-		position = IDLE_POSITION.lerp(IDLE_POSITION + CUT_OFFSET, cut_t)
-		_slash_pivot.rotation = CHAMBER_PIVOT.lerp(CUT_PIVOT, cut_t)
-		return
+func _apply_slash_progress(progress: float) -> void:
+	var angle := 0.0
 
-	var return_t := (t - CUT_END_T) / (1.0 - CUT_END_T)
-	return_t = 1.0 - pow(1.0 - return_t, 2.0)
-	position = (IDLE_POSITION + CUT_OFFSET).lerp(IDLE_POSITION, return_t)
-	_slash_pivot.rotation = CUT_PIVOT.lerp(IDLE_PIVOT, return_t)
+	if progress <= CHAMBER_END:
+		var local_t := progress / CHAMBER_END
+		local_t = local_t * local_t * (3.0 - 2.0 * local_t)
+		angle = lerpf(0.0, _chamber_angle, local_t)
+	elif progress <= CUT_END:
+		var local_t := (progress - CHAMBER_END) / (CUT_END - CHAMBER_END)
+		local_t = pow(local_t, 0.7)
+		angle = lerpf(_chamber_angle, _cut_angle, local_t)
+	else:
+		var local_t := (progress - CUT_END) / (1.0 - CUT_END)
+		local_t = 1.0 - pow(1.0 - local_t, 2.0)
+		angle = lerpf(_cut_angle, 0.0, local_t)
+
+	_apply_slash_angle(angle)
+
+
+func _apply_slash_angle(angle: float) -> void:
+	var idle_basis := Basis.from_euler(IDLE_EULER)
+	_slash_pivot.basis = Basis(_slash_axis, angle) * idle_basis
 
 
 func _boost_materials(node: Node) -> void:

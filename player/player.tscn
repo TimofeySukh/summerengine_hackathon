@@ -23,7 +23,7 @@ dof_blur_far_distance = 45.0
 
 [sub_resource type="Animation" id="Animation_nl12d"]
 resource_name = "Attack"
-length = 0.34
+length = 0.32
 tracks/0/type = "method"
 tracks/0/imported = false
 tracks/0/enabled = true
@@ -45,7 +45,7 @@ tracks/1/path = NodePath("MeleeAttackArea")
 tracks/1/interp = 1
 tracks/1/loop_wrap = true
 tracks/1/keys = {
-"times": PackedFloat32Array(0.08, 0.22),
+"times": PackedFloat32Array(0.08, 0.2),
 "transitions": PackedFloat32Array(1, 1),
 "values": [{
 "args": [],
@@ -62,7 +62,7 @@ tracks/2/path = NodePath("..")
 tracks/2/interp = 1
 tracks/2/loop_wrap = true
 tracks/2/keys = {
-"times": PackedFloat32Array(0.13),
+"times": PackedFloat32Array(0.12),
 "transitions": PackedFloat32Array(1),
 "values": [{
 "args": [],
@@ -164,7 +164,7 @@ target_position = Vector3(0, 0, -100)
 debug_shape_custom_color = Color(0, 0, 0, 0)
 
 [node name="KatanaVisual" parent="CameraController/PlayerCamera" instance=ExtResource("5_katana")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.62, -0.22, -0.52)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.14, -0.22, -0.52)
 
 [node name="GrenadeLauncher" parent="." instance=ExtResource("3_54qc4")]
 
