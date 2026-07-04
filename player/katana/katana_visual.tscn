@@ -10,4 +10,4 @@ script = ExtResource("2_visual")
 [node name="SlashPivot" type="Node3D" parent="."]
 
 [node name="Katana" parent="SlashPivot" instance=ExtResource("1_katana")]
-transform = Transform3D(0.11, 0, 0, 0, 0, -0.11, 0, 0.11, 0, 0, 0, -0.11)
+transform = Transform3D(0, -0.11, 0, 0.11, 0, 0, 0, 0, 0.11, 0.16, 0, -0.08)
