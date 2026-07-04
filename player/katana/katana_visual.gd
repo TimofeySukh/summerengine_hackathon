@@ -1,6 +1,6 @@
 extends Node3D
 
-const IDLE_ROTATION := Vector3(0.05, 0.0, 1.45)
+const IDLE_ROTATION := Vector3(0.0, 0.15, 0.0)
 
 
 func _ready() -> void:

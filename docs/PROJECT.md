@@ -80,4 +80,4 @@ Do not create assets from scratch (placeholder boxes, procedural meshes, etc.). 
 - Swapped stubby katana for dook blocks model; reduced FPS scale and tuned materials for readability.
 - Parented katana to the FPS camera so it stays visible in view.
 - Moved katana to the camera pivot with a forward offset; added `player/katana/PREVIEW.jpg` for asset preview.
-- Lowered and leveled the FPS katana viewmodel (less right, horizontal idle pose).
+- Lowered and leveled the FPS katana viewmodel (horizontal blade, lower-right hold pose).
