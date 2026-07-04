@@ -1,135 +1,72 @@
 # Surveillance Camera Gameplay — Design Spec
 
-> Status: **Draft — awaiting direction choice**  
-> Date: 2026-07-04
+> Status: **Approved direction — manual camera control, no auto-aim**  
+> Date: 2026-07-04 (updated same day)
 
 ## Summary
 
-Heat Wave is pivoting from free first-person movement to **surveillance-only play**. In the final game the player never walks the arena directly. They watch the world through fixed security cameras and interact almost exclusively by **swinging the katana** — ideally with **one primary action button**.
+Heat Wave is pivoting from free first-person movement to **surveillance-only play**. The player watches the arena through security cameras, **manually pans/rotates** the active feed, and cuts enemies with a katana — **one slash button**, **no auto-aim**, **no auto camera tracking**.
 
-The current WASD + mouse prototype is a **temporary stand-in**. It simulates being “on a camera feed” until the real camera system is built. Do not invest in polishing FPS movement; treat it as disposable scaffolding.
+The current WASD + mouse prototype is a **temporary stand-in**. Mouse look maps to future **camera rotation**; body movement will be removed. Do not invest in polishing FPS locomotion.
 
 ## Fantasy
 
-You are trapped behind a monitor wall in a neon night-city arena. Hostile humanoids move through blind spots and camera coverage. You cannot run to them — you can only **cut through the feed** when a target enters your slash window. Success feels like precise timing and reading multiple angles, not platforming.
+You are at an operator desk in a neon night-city arena. Hostile humanoids move through the coverage of wall-mounted cameras. You **sweep the lens yourself**, find the target in frame, and slash through the feed. Missing a window costs health. Nothing aims for you.
 
-## Final Target (North Star)
+## Approved Control Model
 
-| Area | Final intent |
-|------|----------------|
-| View | One or more fixed security camera feeds (CCTV aesthetic) |
-| Movement | **None** — no WASD body movement in shipping design |
-| Primary action | **One button** — katana slash |
-| Secondary actions | None in v1, or at most passive camera switching (see variants) |
-| Enemies | Enter camera frustums; player reacts with timed slashes |
-| Fail state | Miss the window → contact damage / breach / game over pressure |
+| Input (final) | Action |
+|---------------|--------|
+| **Pan / rotate camera** | Manual — player turns the active CCTV mount (yaw/pitch within limits) |
+| **One button** (LMB / Space) | Katana slash in the **current** camera view |
+| **Body movement** | None |
 
-## Prototype Phase (Now)
+### Explicitly rejected
 
-Until the camera stack exists:
+- **Auto-aim** — no snap-to-enemy, no magnet hitboxes, no “smart” slash toward nearest target
+- **Auto camera tracking** — camera never follows or switches to threats by itself
+- **Auto feed selection** — system does not pick “best” camera for the player
 
-- Keep keyboard + mouse controls **only as a dev placeholder**
-- Left mouse = katana slash (same as today)
-- WASD / mouse look = **not final design**; documented as fake “operator desk” input
-- Arena, chasers, slash VFX, and hit detection remain useful testbeds for slash timing and enemy paths
+### Player skill
 
-**Rule for agents:** do not implement surveillance cameras yet. Do not remove WASD until the chosen variant is approved and camera work is scheduled.
+1. Rotate the camera to bring an enemy into the slash zone  
+2. Time the slash when the target is in frame  
+3. (Optional later) Manually switch to another camera post — still **player-chosen**, never automatic
 
-## Control Variants (Pick One)
+## Prototype Mapping (Now)
 
-Three viable one-button directions. Each can start with keyboard slash (LMB) during prototype.
+Until real CCTV nodes ship, keyboard/mouse **simulate** the final model:
 
-### Variant A — **Auto-Camera Slash** (recommended)
+| Prototype input | Stands in for (final) |
+|-----------------|------------------------|
+| **Mouse look** | Camera pan / rotate on mount |
+| **Left mouse** | Katana slash |
+| WASD | Temporary body movement — **will be removed** |
+| Space jump | Temporary — **will be removed** |
 
-**Button:** Space or Left Mouse — slash on the **currently active** camera.
+**Rule for agents:** do not implement surveillance cameras yet. Do not add auto-aim or auto camera switch logic. Keep WASD until camera scenes replace body movement.
 
-**Camera behavior:** System auto-selects the feed (single cam at first; later: threat-based switch — e.g. camera with nearest enemy in slash zone).
+## Camera Implementation Notes (Future — No Code Yet)
 
-**Player skill:** Timing — press when the enemy crosses the slash band (center third of frame, floor lane, etc.).
+When cameras are built:
 
-**Pros**
-
-- True one-button loop in shipping build
-- Strong readable fantasy: you trust the system to show the right angle
-- Easiest to implement after cameras exist
-
-**Cons**
-
-- Less player agency over viewpoint
-- Auto-switch logic must feel fair, not random
-
-**Best if:** you want a tight arcade / rhythm-survival game.
-
----
-
-### Variant B — **Multi-Feed Operator**
-
-**Button:** Left Mouse — slash **where you are looking** within the active feed (ray from screen center or cursor snap to nearest enemy silhouette).
-
-**Camera behavior:** Player picks camera with **prototype-only** keys (1–4, Q/E, click minimap). In final build, camera pick might become automatic round-robin or split-screen grid with focus highlight — still one slash button, but implicit “focus” before slash.
-
-**Player skill:** Choose the right monitor, then slash.
-
-**Pros**
-
-- Tactical “security room” feel
-- Natural fit for multi-camera arena layout
-
-**Cons**
-
-- Strictly one button only if camera focus is automatic or UI-driven without extra keys
-- More UI and level design work (camera placement, minimap)
-
-**Best if:** you want Papers Please / operator-desk tension with spatial awareness.
-
----
-
-### Variant C — **Single Fixed Lens**
-
-**Button:** Left Mouse — slash.
-
-**Camera behavior:** **One** security camera for the whole run (or whole wave). Enemies walk through the static frame left-to-right / depth axis.
-
-**Player skill:** Pure timing and pattern recognition.
-
-**Pros**
-
-- Simplest scope; fastest path from prototype to final
-- Clear marketing hook: “one camera, one blade”
-
-**Cons**
-
-- Low variety until more waves/cameras are added as content
-- Less “surveillance network” fantasy
-
-**Best if:** you want a minimal vertical slice first, expand cameras later.
-
-## Comparison
-
-| | A Auto-Camera | B Multi-Feed | C Single Lens |
-|---|:---:|:---:|:---:|
-| One button in final | Yes | Yes* | Yes |
-| Surveillance fantasy | Medium | High | Low |
-| Implementation cost | Medium | High | Low |
-| Prototype → final gap | Small | Large | Smallest |
-
-\*Camera focus must not require extra buttons in final; prototype may use number keys temporarily.
-
-## Recommended Path
-
-1. **Approve Variant A or C** for first vertical slice (A if multi-cam arena is core; C if speed matters).
-2. Keep current keyboard movement unchanged until camera scenes exist.
-3. Next implementation milestone (after approval): fixed `Camera3D` nodes in arena + switch feed rendering; slash hit tests run in **active feed space**, not player body space.
-4. Deprecate `player` body movement last — after slash and enemies work through feeds.
+- Each security camera is a **fixed mount** with a limited rotation arc (typical PTZ — pan-tilt-zoom, here pan/tilt only unless zoom is added later)
+- Slash hit detection runs in **active feed space** (ray or volume from camera forward axis / screen center)
+- Slash only hits what the player actually framed — skill = aim + timing
+- Optional: multiple fixed camera **posts** around the arena; player manually switches feed (e.g. number keys or UI click) — **not** auto-selected
 
 ## Open Questions
 
-1. Which variant is the design target — A, B, or C?
-2. Should slash be **timing-only** (window opens/closes) or **aim-assisted** (forgiving hitbox on enemy in frame)?
-3. Is the katana literally in the CCTV overlay (viewmodel on feed HUD) or invisible operator action (only slash VFX on feed)?
+1. **One rotatable camera** vs **several posts** the player switches between manually?
+2. Slash zone: full frame, center band, or crosshair-only?
+3. Katana on HUD overlay vs slash VFX only on the feed?
 
 ## Out of Scope (This Spec)
 
 - Camera implementation code
 - Removing WASD / retargeting input map
-- New assets beyond existing arena and chasers
+- Auto-aim or threat-based camera systems
+
+## Superseded Variants
+
+Earlier draft options A (auto-camera) and auto feed selection are **rejected** per design decision 2026-07-04.
