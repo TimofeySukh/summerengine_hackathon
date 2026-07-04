@@ -11,6 +11,7 @@ You do not run the streets. You sit at one monitor, **turn a single security cam
 - **Movement:** none — operator stays at the desk.
 - **Combat:** slash only what you framed in the feed.
 - **Rejected:** auto-aim, threat-based camera switching, multi-camera posts, body WASD movement.
+- **Proposed (future):** mic commands **"move"** / **"stop"** to sweep or halt the camera — slash still on button.
 
 ## Current Prototype (Temporary)
 
@@ -21,4 +22,4 @@ You do not run the streets. You sit at one monitor, **turn a single security cam
 
 ## Open Decision
 
-Slash zone shape and katana HUD vs feed-only VFX (see spec).
+Slash zone shape, katana HUD vs feed-only VFX, and voice `"move"` pan direction (see spec).

@@ -21,6 +21,25 @@ You are at an operator desk in a neon night-city arena. Hostile humanoids cross 
 | **One button** (LMB / Space) | Katana slash in the **current** camera view |
 | **Body movement** | None |
 
+### Voice input (proposed — future)
+
+Optional **microphone** binds for hands-busy operator fantasy. Not required for v1; design before implementation.
+
+| Voice command | Intended action |
+|---------------|-----------------|
+| **"move"** | Start camera pan on the fixed mount (continuous sweep until stopped) |
+| **"stop"** | Halt camera pan immediately |
+
+**Notes**
+
+- Voice controls **camera motion only** — slash stays on button (no voice attack in v1).
+- Mouse pan remains available; voice is an alternate or additive channel, not a replacement.
+- Implementation likely uses simple **keyword detection** (распознавание ключевых слов — ловим только «move»/«stop», не полный speech-to-text) with debounce so noise does not spam commands.
+- Open: pan direction on `"move"` — last mouse-look direction, fixed horizontal sweep, or `"move left"` / `"move right"` later.
+- Requires mic permission UX and a mute/off toggle.
+
+**Rule for agents:** do not implement mic input until CCTV camera pan exists. Document only until user asks to build it.
+
 ### Explicitly rejected
 
 - **Auto-aim** — no snap-to-enemy, no magnet hitboxes, no “smart” slash toward nearest target
@@ -60,6 +79,7 @@ When cameras are built:
 
 1. Slash zone: full frame, center band, or crosshair-only?
 2. Katana on HUD overlay vs slash VFX only on the feed?
+3. On `"move"`, which pan direction — last manual direction, fixed sweep, or directional voice commands?
 
 ## Out of Scope (This Spec)
 

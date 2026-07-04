@@ -50,6 +50,7 @@ Do not create assets from scratch (placeholder boxes, procedural meshes, etc.). 
 |-------|--------|
 | **Pan / rotate** | Manual camera turn on fixed mount (no auto-aim) |
 | **One button** (LMB / Space) | Katana slash in framed view |
+| **Microphone** *(proposed)* | Say **"move"** / **"stop"** to start/stop camera pan — optional, not v1 |
 | Body movement | None |
 | Auto camera / auto aim | **Not allowed** |
 
@@ -115,3 +116,4 @@ Do not create assets from scratch (placeholder boxes, procedural meshes, etc.). 
 - **Design pivot:** documented surveillance-only final gameplay (manual camera rotate, one-button slash, no auto-aim). WASD prototype is temporary. Spec: `docs/superpowers/specs/2026-07-04-surveillance-camera-design.md`.
 - **Design decision:** rejected auto-aim and auto camera tracking; mouse look in prototype maps to future camera pan.
 - **Design decision:** v1 uses **one rotatable security camera** — no multi-post feed switching.
+- **Proposed:** microphone voice commands **"move"** / **"stop"** to start/stop camera pan (future; slash stays on button).
