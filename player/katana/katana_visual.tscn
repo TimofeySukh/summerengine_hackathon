@@ -8,4 +8,4 @@ unique_name_in_owner = true
 script = ExtResource("2_visual")
 
 [node name="Katana" parent="." instance=ExtResource("1_katana")]
-transform = Transform3D(0.16, 0, 0, 0, 0, -0.16, 0, 0.16, 0, 0, 0.05, -0.35)
+transform = Transform3D(0.14, 0, 0, 0, 0, 0.14, 0, -0.14, 0, 0, 0, -0.25)
