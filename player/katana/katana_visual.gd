@@ -5,8 +5,8 @@ const IDLE_POSITION := Vector3(0.14, -0.22, -0.52)
 const IDLE_EULER := Vector3(0.0, 0.08, 0.0)
 
 const REST_TIP_DIR := Vector3(0.0, 0.0, -1.0)
-const CHAMBER_TIP_DIR := Vector3(-0.34, 0.44, -0.83).normalized()
-const CUT_TIP_DIR := Vector3(0.34, -0.44, -0.83).normalized()
+const CHAMBER_TIP_RAW := Vector3(-0.34, 0.44, -0.83)
+const CUT_TIP_RAW := Vector3(0.34, -0.44, -0.83)
 
 const CHAMBER_END := 0.11
 const CUT_END := 0.24
@@ -17,12 +17,16 @@ var _attack_tween: Tween
 var _slash_axis: Vector3
 var _chamber_angle: float
 var _cut_angle: float
+var _chamber_tip_dir: Vector3
+var _cut_tip_dir: Vector3
 
 
 func _ready() -> void:
-	_slash_axis = CHAMBER_TIP_DIR.cross(CUT_TIP_DIR).normalized()
-	_chamber_angle = REST_TIP_DIR.signed_angle_to(CHAMBER_TIP_DIR, _slash_axis)
-	_cut_angle = REST_TIP_DIR.signed_angle_to(CUT_TIP_DIR, _slash_axis)
+	_chamber_tip_dir = CHAMBER_TIP_RAW.normalized()
+	_cut_tip_dir = CUT_TIP_RAW.normalized()
+	_slash_axis = _chamber_tip_dir.cross(_cut_tip_dir).normalized()
+	_chamber_angle = REST_TIP_DIR.signed_angle_to(_chamber_tip_dir, _slash_axis)
+	_cut_angle = REST_TIP_DIR.signed_angle_to(_cut_tip_dir, _slash_axis)
 	reset_pose()
 	_boost_materials(_slash_pivot)
 
