@@ -67,3 +67,4 @@ First-person katana combat prototype in a stylized Japanese-inspired mountain gr
 
 - Created `docs/PROJECT.md` as the living project doc.
 - Added agent workflow rules to `.summer/AGENTS.md` (English in repo, local commits, doc updates).
+- Fixed inverted vertical mouse look by disabling `invert_mouse_y` on the player camera.
