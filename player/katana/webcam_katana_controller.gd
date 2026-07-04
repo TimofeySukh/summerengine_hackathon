@@ -5,6 +5,8 @@ extends Node3D
 
 signal slash_struck
 
+const Y_LEVEL_EPS := 0.035
+
 @onready var _camera: Camera3D = get_parent() as Camera3D
 @onready var _blade_a: WebcamKatana = $BladeA
 @onready var _blade_b: WebcamKatana = $BladeB
@@ -57,9 +59,11 @@ func update_from_bridge(delta: float, has_hands: bool, left: Vector2, right: Vec
 	var left_tilt := _side_tilt_amount(left, _prev_left, delta)
 	_prev_left = left
 	_prev_right = right
-	# Mirror camera: physical right wrist -> blade A, physical left -> blade B.
-	_blade_a.set_tracking(right.x, right.y, right_swing, right_tilt)
-	_blade_b.set_tracking(left.x, left.y, left_swing, -left_tilt)
+	var left_y := _matched_screen_y(left.y, right.y)
+	var right_y := _matched_screen_y(right.y, left.y)
+	# Physical right wrist -> blade A, physical left -> blade B (1:1 camera screen coords).
+	_blade_a.set_tracking(right.x, right_y, right_swing, right_tilt)
+	_blade_b.set_tracking(left.x, left_y, left_swing, left_tilt)
 
 
 func slash_camera_hand(hand: String) -> void:
@@ -91,5 +95,11 @@ func _side_tilt_amount(current: Vector2, previous: Vector2, delta: float) -> flo
 	var vel := (current - previous) / delta
 	var horizontal := vel.x
 	if absf(horizontal) < 0.3:
-		return clampf((current.x - 0.5) * 0.28, -0.18, 0.18)
+		return 0.0
 	return clampf(horizontal * 1.05, -0.85, 0.85)
+
+
+func _matched_screen_y(y: float, other_y: float) -> float:
+	if absf(y - other_y) <= Y_LEVEL_EPS:
+		return (y + other_y) * 0.5
+	return y

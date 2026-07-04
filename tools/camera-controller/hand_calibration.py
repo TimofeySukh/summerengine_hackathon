@@ -50,6 +50,12 @@ class WristBounds:
             changed = True
         return changed
 
+    def map_x(self, x: float) -> float:
+        sx = self.x_max - self.x_min
+        if sx < 1e-4:
+            return 0.5
+        return float(np.clip((x - self.x_min) / sx, 0.0, 1.0))
+
     def map_point(self, x: float, y: float) -> tuple[float, float]:
         sx = self.x_max - self.x_min
         sy = self.y_max - self.y_min
@@ -82,9 +88,13 @@ class HandCalibration:
         return changed
 
     def apply(self, frame: HandFrame) -> HandFrame:
-        lx, ly = self.left.map_point(frame.lx, frame.ly)
-        rx, ry = self.right.map_point(frame.rx, frame.ry)
-        return HandFrame(lx=lx, ly=ly, rx=rx, ry=ry)
+        # X: per-hand sweep bounds -> full screen width. Y: raw camera image coords (1:1).
+        return HandFrame(
+            lx=self.left.map_x(frame.lx),
+            ly=frame.ly,
+            rx=self.right.map_x(frame.rx),
+            ry=frame.ry,
+        )
 
     def summary_lines(self) -> list[str]:
         return [self.left.summary("Left wrist"), self.right.summary("Right wrist")]

@@ -17,12 +17,10 @@ const SWING_PIVOT := Vector3(0.0, PI, 0.75)
 const HANDLE_PLANE_Z := -0.42
 
 @export var hand_slot: HandSlot = HandSlot.RIGHT
-@export var hand_screen_y_bias := 0.10
-@export var hand_local_y_offset := -0.06
 @export var smoothing := 18.0
 @export var swing_rise := 16.0
 @export var swing_fall := 10.0
-@export var handle_screen_margin := 52.0
+@export var handle_screen_margin := 0.0
 @export var max_side_tilt := 0.55
 @export var tilt_smoothing := 16.0
 
@@ -67,13 +65,11 @@ func set_tracking(norm_x: float, norm_y: float, swing: float, side_tilt: float =
 
 	var viewport_size := get_viewport().get_visible_rect().size
 	var margin := handle_screen_margin
-	var biased_y := clampf(norm_y + hand_screen_y_bias, 0.0, 1.0)
 	var screen := Vector2(
 		clampf(norm_x * viewport_size.x, margin, viewport_size.x - margin),
-		clampf(biased_y * viewport_size.y, margin, viewport_size.y - margin)
+		clampf(norm_y * viewport_size.y, margin, viewport_size.y - margin)
 	)
-	_target_pos = _screen_to_handle_local(screen)
-	_target_pos.y += hand_local_y_offset
+	_target_pos = _ray_hit_plane(screen)
 
 
 func trigger_hit() -> void:
@@ -90,7 +86,16 @@ func _process(delta: float) -> void:
 	_pivot.rotation = base_pivot + Vector3(0.0, 0.0, _tilt_current)
 
 
-func _screen_to_handle_local(screen: Vector2) -> Vector3:
+func _ray_hit_plane(screen: Vector2) -> Vector3:
+	var pos := _intersect_screen(screen)
+	# Same screen Y must map to the same handle height regardless of X.
+	var vp := get_viewport().get_visible_rect().size
+	var center_x := Vector2(vp.x * 0.5, screen.y)
+	pos.y = _intersect_screen(center_x).y
+	return pos
+
+
+func _intersect_screen(screen: Vector2) -> Vector3:
 	var ray_origin := _camera.project_ray_origin(screen)
 	var ray_dir := _camera.project_ray_normal(screen)
 	var anchor := _camera.to_global(Vector3(0.0, 0.0, HANDLE_PLANE_Z))
