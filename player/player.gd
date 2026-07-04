@@ -148,6 +148,9 @@ func _physics_process(delta: float) -> void:
 func attack() -> void:
 	_attack_animation_player.play("Attack")
 	_character_skin.punch()
+
+
+func perform_katana_hit() -> void:
 	_hit_with_katana()
 
 
@@ -215,8 +218,14 @@ func _update_health_ui() -> void:
 
 func _hit_with_katana() -> void:
 	var camera := _camera_controller.camera
-	var origin := camera.global_position
 	var direction := (camera.global_transform.basis * Vector3.FORWARD).normalized()
+	var aim_target := _camera_controller.get_aim_target()
+	var aim_collider := _camera_controller.get_aim_collider()
+
+	if aim_collider != null and _damage_katana_target(aim_collider, aim_target, direction):
+		return
+
+	var origin := camera.global_position
 	var ray_target := origin + direction * 8.0
 	var space_state := get_world_3d().direct_space_state
 
@@ -227,14 +236,14 @@ func _hit_with_katana() -> void:
 		return
 
 	var shape := SphereShape3D.new()
-	shape.radius = 2.0
+	shape.radius = 1.4
 	var shape_query := PhysicsShapeQueryParameters3D.new()
 	shape_query.shape = shape
-	shape_query.transform = Transform3D(Basis(), origin + direction * 3.2)
+	shape_query.transform = Transform3D(Basis(), aim_target)
 	shape_query.exclude = [get_rid()]
 
 	for hit in space_state.intersect_shape(shape_query, 16):
-		if hit.has("collider") and _damage_katana_target(hit.collider, origin + direction * 3.2, direction):
+		if hit.has("collider") and _damage_katana_target(hit.collider, aim_target, direction):
 			return
 
 
