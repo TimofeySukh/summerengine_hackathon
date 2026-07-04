@@ -114,6 +114,7 @@ The game currently uses the main menu theme (`mainmenu_1.ogg`) from the **Battle
 - Changed katana attack to epic diagonal slash with arc VFX and combined rotation/position sweep.
 - Reworked diagonal slash to use tween-driven wind/slash/recover instead of euler keyframes.
 - Fixed diagonal slash: hilt pivot arc plus screen-space diagonal path; trail follows blade.
+- Slowed slash and reversed diagonal to upper-left → lower-right.
 - Moved the first-person katana viewmodel to the right side of the camera frame.
 - Tuned the katana viewmodel back toward center after the far-right placement overshot.
 - Nudged the katana viewmodel slightly left for a better right-side frame position.

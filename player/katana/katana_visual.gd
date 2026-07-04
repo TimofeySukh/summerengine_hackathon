@@ -2,10 +2,13 @@ extends Node3D
 
 const IDLE_POSITION := Vector3(0.14, -0.22, -0.52)
 const IDLE_PIVOT_ROTATION := Vector3(0.06, 0.1, -0.18)
-const WIND_POSITION := Vector3(0.28, -0.02, -0.42)
-const WIND_PIVOT_ROTATION := Vector3(-0.04, 0.08, -0.82)
-const SLASH_POSITION := Vector3(0.02, -0.36, -0.56)
-const SLASH_PIVOT_ROTATION := Vector3(0.1, 0.12, 0.95)
+const WIND_POSITION := Vector3(0.0, -0.02, -0.44)
+const WIND_PIVOT_ROTATION := Vector3(-0.02, 0.08, 0.78)
+const SLASH_POSITION := Vector3(0.3, -0.38, -0.55)
+const SLASH_PIVOT_ROTATION := Vector3(0.08, 0.1, -0.92)
+const WIND_DURATION := 0.09
+const SLASH_DURATION := 0.15
+const RECOVER_DURATION := 0.18
 
 @export var slash_color := Color(0.85, 0.95, 1.0, 0.72)
 
@@ -36,13 +39,13 @@ func play_slash() -> void:
 	reset_pose()
 
 	_attack_tween = create_tween()
-	_attack_tween.tween_property(self, "position", WIND_POSITION, 0.05).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	_attack_tween.parallel().tween_property(_slash_pivot, "rotation", WIND_PIVOT_ROTATION, 0.05)
+	_attack_tween.tween_property(self, "position", WIND_POSITION, WIND_DURATION).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_attack_tween.parallel().tween_property(_slash_pivot, "rotation", WIND_PIVOT_ROTATION, WIND_DURATION)
 	_attack_tween.chain().tween_callback(_play_slash_trail)
-	_attack_tween.chain().tween_property(self, "position", SLASH_POSITION, 0.08).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-	_attack_tween.parallel().tween_property(_slash_pivot, "rotation", SLASH_PIVOT_ROTATION, 0.08)
-	_attack_tween.chain().tween_property(self, "position", IDLE_POSITION, 0.11).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	_attack_tween.parallel().tween_property(_slash_pivot, "rotation", IDLE_PIVOT_ROTATION, 0.11)
+	_attack_tween.chain().tween_property(self, "position", SLASH_POSITION, SLASH_DURATION).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	_attack_tween.parallel().tween_property(_slash_pivot, "rotation", SLASH_PIVOT_ROTATION, SLASH_DURATION)
+	_attack_tween.chain().tween_property(self, "position", IDLE_POSITION, RECOVER_DURATION).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_attack_tween.parallel().tween_property(_slash_pivot, "rotation", IDLE_PIVOT_ROTATION, RECOVER_DURATION)
 
 
 func _play_slash_trail() -> void:
@@ -61,8 +64,8 @@ func _play_slash_trail() -> void:
 	fade_color.a = 0.0
 
 	_vfx_tween = create_tween().set_parallel(true)
-	_vfx_tween.tween_property(_slash_trail, "scale", Vector3(1.0, 1.0, 1.0), 0.1).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	_vfx_tween.tween_property(_slash_material, "albedo_color", fade_color, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	_vfx_tween.tween_property(_slash_trail, "scale", Vector3(1.0, 1.0, 1.0), 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_vfx_tween.tween_property(_slash_material, "albedo_color", fade_color, 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	_vfx_tween.chain().tween_callback(func() -> void: _slash_trail.visible = false)
 
 
