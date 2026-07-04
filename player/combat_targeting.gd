@@ -37,9 +37,6 @@ func _aim_range(player: Player) -> float:
 
 
 func update(player: Player, camera: CameraController, delta: float) -> void:
-	if not ControlMode.is_keyboard():
-		return
-
 	_refresh_soft_lock(player, camera)
 
 	if player.is_katana_slashing():

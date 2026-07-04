@@ -114,6 +114,7 @@ var _combat_targeting := CombatTargeting.new()
 var _is_dead := false
 var _webcam_warned := false
 var _voice_wave_timer := 0.0
+var _webcam_slash_until := 0.0
 
 func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -275,9 +276,11 @@ func attack() -> void:
 
 func _poll_webcam_slash() -> void:
 	var hand := CameraInputBridge.poll_slash()
-	if hand.is_empty():
+	if hand.is_empty() or _is_katana_slashing():
 		return
+	_combat_targeting.on_attack(self, _camera_controller)
 	_begin_attack_lunge()
+	_webcam_slash_until = Time.get_ticks_msec() / 1000.0 + KatanaVisual.SLASH_DURATION
 	_webcam_katanas.slash_camera_hand(hand)
 	_character_skin.punch()
 
@@ -362,7 +365,7 @@ func get_facing_direction() -> Vector3:
 
 func _is_katana_slashing() -> bool:
 	if ControlMode.is_webcam():
-		return false
+		return Time.get_ticks_msec() / 1000.0 < _webcam_slash_until
 	return _katana_left.is_slashing() or _katana_right.is_slashing()
 
 
@@ -584,6 +587,7 @@ func _die() -> void:
 	_lunge_target = null
 	_dash_active = false
 	_dash_elapsed = 0.0
+	_webcam_slash_until = 0.0
 	_combat_targeting.reset()
 	velocity = Vector3.ZERO
 	player_died.emit()
@@ -603,6 +607,7 @@ func respawn() -> void:
 	_dash_active = false
 	_dash_elapsed = 0.0
 	_dash_cooldown_left = 0.0
+	_webcam_slash_until = 0.0
 	_combat_targeting.reset()
 	_katana_left.reset_pose()
 	_katana_right.reset_pose()
