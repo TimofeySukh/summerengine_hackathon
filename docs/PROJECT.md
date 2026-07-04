@@ -27,7 +27,7 @@ First-person katana combat prototype in a stylized Japanese-inspired mountain gr
 
 - First-person camera at head height (`player/camera_controller.gd`)
 - WASD movement, jump, mouse look (`player/player.gd`)
-- Placeholder katana mesh on `MeleeAnchor` (`player/player.tscn`)
+- CC0 low-poly katana model on `MeleeAnchor` (`player/katana/katana.glb`, wrapped by `katana_visual.tscn`)
 - Melee attack via `Attack` animation and `MeleeAttackArea` hit volume (`player/melee_attack_area.gd`)
 - Character model hidden; katana visible in first person
 
@@ -55,7 +55,9 @@ First-person katana combat prototype in a stylized Japanese-inspired mountain gr
 |------|------|
 | `main.tscn` | Playable level and enemy placement |
 | `player/player.gd` | Movement, attack, damage |
-| `player/player.tscn` | Player scene, katana, melee hitbox |
+| `player/katana/katana.glb` | Katana 3D model (CC0, CreativeTrio via Poly Pizza) |
+| `player/katana/katana_visual.tscn` | Katana scale and orientation for first-person view |
+| `player/player.tscn` | Player scene, katana mount, melee hitbox |
 | `player/camera_controller.gd` | First-person camera |
 | `player/melee_attack_area.gd` | Melee damage detection |
 | `enemies/beetle_bot.gd` | Ground enemy AI |
@@ -68,3 +70,4 @@ First-person katana combat prototype in a stylized Japanese-inspired mountain gr
 - Created `docs/PROJECT.md` as the living project doc.
 - Added agent workflow rules to `.summer/AGENTS.md` (English in repo, local commits, doc updates).
 - Fixed inverted vertical mouse look by disabling `invert_mouse_y` on the player camera.
+- Replaced placeholder katana boxes with CC0 low-poly model from Poly Pizza (CreativeTrio).

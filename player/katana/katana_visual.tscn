@@ -1,0 +1,8 @@
+[gd_scene load_steps=2 format=3 uid="uid://c8katana1visual"]
+
+[ext_resource type="PackedScene" uid="uid://d3cwvjsrw82l" path="res://player/katana/katana.glb" id="1_katana"]
+
+[node name="KatanaVisual" type="Node3D"]
+
+[node name="Katana" parent="." instance=ExtResource("1_katana")]
+transform = Transform3D(-4.37114e-08, 0, 60, 0, 60, 0, -60, 0, -4.37114e-08, 0, 0, 0)

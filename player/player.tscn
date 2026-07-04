@@ -1,10 +1,11 @@
-[gd_scene load_steps=21 format=3 uid="uid://ciqrpd5675boy"]
+[gd_scene load_steps=15 format=3 uid="uid://ciqrpd5675boy"]
 
 [ext_resource type="Script" uid="uid://gofa4kyvcacj" path="res://player/player.gd" id="1_rvo1c"]
 [ext_resource type="PackedScene" uid="uid://b2ew46dlu7u7x" path="res://player/grenade_launcher.tscn" id="3_54qc4"]
 [ext_resource type="Script" uid="uid://dwd8k7raa2k87" path="res://player/camera_controller.gd" id="3_qrkly"]
 [ext_resource type="Script" uid="uid://0nwful4fsrh8" path="res://player/melee_attack_area.gd" id="3_v1vve"]
 [ext_resource type="PackedScene" uid="uid://c0mo8tek77du4" path="res://player/character_skin.tscn" id="4_ign62"]
+[ext_resource type="PackedScene" uid="uid://c8katana1visual" path="res://player/katana/katana_visual.tscn" id="5_katana"]
 [ext_resource type="AudioStream" uid="uid://bx0t7f2nuk2lr" path="res://player/sounds/03_step_grass_03.wav" id="10_wx4h4"]
 [ext_resource type="AudioStream" uid="uid://cbcb2d63weegs" path="res://player/sounds/45_landing_01.wav" id="11_3s4i7"]
 
@@ -19,21 +20,6 @@ dof_blur_far_distance = 45.0
 [sub_resource type="CylinderShape3D" id="CylinderShape3D_s5n07"]
 
 [sub_resource type="SphereMesh" id="SphereMesh_uex0s"]
-
-[sub_resource type="BoxMesh" id="BoxMesh_katana_blade"]
-size = Vector3(0.08, 0.08, 2.25)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_katana_blade"]
-albedo_color = Color(0.82, 0.86, 0.9, 1)
-metallic = 0.85
-roughness = 0.24
-
-[sub_resource type="BoxMesh" id="BoxMesh_katana_handle"]
-size = Vector3(0.18, 0.18, 0.55)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_katana_handle"]
-albedo_color = Color(0.07, 0.055, 0.045, 1)
-roughness = 0.75
 
 [sub_resource type="Animation" id="Animation_nl12d"]
 resource_name = "Attack"
@@ -178,17 +164,8 @@ visible = false
 mesh = SubResource("SphereMesh_uex0s")
 skeleton = NodePath("../../..")
 
-[node name="KatanaBlade" type="MeshInstance3D" parent="CharacterRotationRoot/MeleeAnchor"]
-transform = Transform3D(0.707107, -0.25, 0.661438, 0, 0.935414, 0.353553, -0.707107, -0.25, 0.661438, -0.55, 1.25, -1.1)
-mesh = SubResource("BoxMesh_katana_blade")
-surface_material_override/0 = SubResource("StandardMaterial3D_katana_blade")
-skeleton = NodePath("../../..")
-
-[node name="KatanaHandle" type="MeshInstance3D" parent="CharacterRotationRoot/MeleeAnchor"]
-transform = Transform3D(0.707107, -0.25, 0.661438, 0, 0.935414, 0.353553, -0.707107, -0.25, 0.661438, -0.06, 1.05, -0.45)
-mesh = SubResource("BoxMesh_katana_handle")
-surface_material_override/0 = SubResource("StandardMaterial3D_katana_handle")
-skeleton = NodePath("../../..")
+[node name="KatanaVisual" parent="CharacterRotationRoot/MeleeAnchor" instance=ExtResource("5_katana")]
+transform = Transform3D(0.707107, -0.25, 0.661438, 0, 0.935414, 0.353553, -0.707107, -0.25, 0.661438, -0.55, 1.05, -0.85)
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="CharacterRotationRoot/MeleeAnchor"]
 root_node = NodePath("../..")
