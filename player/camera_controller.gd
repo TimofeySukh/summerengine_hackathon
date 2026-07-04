@@ -68,7 +68,7 @@ func _process(delta: float) -> void:
 
 	if _katana_viewmodel:
 		_katana_viewmodel.global_transform = camera.global_transform * Transform3D(
-			_katana_viewmodel.basis,
+			Basis.from_euler(_katana_viewmodel.rotation),
 			KATANA_VIEW_OFFSET
 		)
 
