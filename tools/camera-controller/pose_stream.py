@@ -412,6 +412,7 @@ def main() -> int:
     stream_started = time.monotonic()
     frames_since_report = 0
     poses_since_report = 0
+    last_bridge_ping = 0.0
     last_status_check = 0.0
     board_status: dict = {}
     stream_frame_no = 0
@@ -422,6 +423,10 @@ def main() -> int:
     try:
         while True:
             now = time.monotonic()
+            if game_bridge is not None and now - last_bridge_ping >= 0.5:
+                game_bridge.ping()
+                last_bridge_ping = now
+
             if now - last_status_check >= 5.0:
                 board_status = fetch_board_status(args.status)
                 last_status_check = now

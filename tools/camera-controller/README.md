@@ -47,7 +47,7 @@ When `--game-bridge` is on, slash and torso-yaw events go to Godot autoload `Cam
 | `{"type":"shockwave","level"?}` | Shockwave around player (mic loud sound in webcam mode) |
 | `{"type":"voice_wave","confidence":0.91}` | Triggers the WAVE superpower once |
 
-With `--game-bridge`, local arrow-key emulation is off unless you pass `--also-keys`. Loud mic bursts (default RMS ≥ 0.13) also trigger shockwave every ~3.5s. Saying "WAVE" into the board microphone sends the voice-wave event unless `--no-voice-wave` is passed. Without `--game-bridge`, torso yaw can hold `Q` / `E` for camera rotation and wrist slashes tap the arrow keys.
+`run_for_game.sh` starts the game bridge with calibration skipped and audio triggers disabled, so Webcam mode immediately sends hand/slash packets without random mic-triggered abilities. With raw `pose_stream.py --game-bridge`, local arrow-key emulation is off unless you pass `--also-keys`. Loud mic bursts can trigger shockwave unless `--no-audio` is passed, and saying "WAVE" sends the voice-wave event unless `--no-voice-wave` is passed. Without `--game-bridge`, wrist slashes tap the arrow keys.
 
 ## Hand calibration
 

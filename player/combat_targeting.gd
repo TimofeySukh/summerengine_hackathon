@@ -39,7 +39,7 @@ func _aim_range(player: Player) -> float:
 func update(player: Player, camera: CameraController, delta: float) -> void:
 	_refresh_soft_lock(player, camera)
 
-	if player.is_katana_slashing():
+	if player.is_attack_lunge_active():
 		return
 
 	_apply_soft_aim(player, camera, delta)
@@ -164,7 +164,7 @@ func _refresh_soft_lock(player: Player, camera: CameraController) -> void:
 			lock = null
 			lock_mode = LockMode.NONE
 
-	if lock_mode == LockMode.ATTACK and not player.is_katana_slashing():
+	if lock_mode == LockMode.ATTACK and not player.is_attack_lunge_active():
 		lock_mode = LockMode.SOFT if is_lock_valid() else LockMode.NONE
 
 	var aim_range := _aim_range(player)

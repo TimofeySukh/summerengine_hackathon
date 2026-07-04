@@ -19,7 +19,7 @@ if [[ "${1:-}" == "--setup-only" ]]; then
   exit 0
 fi
 
-ARGS=(--game-bridge)
+ARGS=(--game-bridge --skip-calibration --no-audio --no-voice-wave)
 if [[ "${1:-}" == "--no-display" || "${1:-}" == "--headless" ]]; then
   ARGS+=(--no-display)
   shift

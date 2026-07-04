@@ -15,6 +15,7 @@ var _has_hands := false
 var _preview_texture := ImageTexture.new()
 var _has_preview := false
 var _last_packet_ms := 0
+var _logged_first_packet := false
 
 
 func _ready() -> void:
@@ -84,6 +85,7 @@ func reset_session() -> void:
 	_left_hand_screen = Vector2.ZERO
 	_right_hand_screen = Vector2.ZERO
 	_last_packet_ms = 0
+	_logged_first_packet = false
 
 
 func _parse_packet(raw: String) -> void:
@@ -93,6 +95,9 @@ func _parse_packet(raw: String) -> void:
 
 	_last_packet_ms = Time.get_ticks_msec()
 	var msg_type: String = str(data.get("type", ""))
+	if not _logged_first_packet:
+		_logged_first_packet = true
+		print("CameraInputBridge: receiving UDP camera input")
 
 	match msg_type:
 		"slash":

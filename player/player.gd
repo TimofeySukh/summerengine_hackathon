@@ -346,6 +346,10 @@ func is_katana_slashing() -> bool:
 	return _is_katana_slashing()
 
 
+func is_attack_lunge_active() -> bool:
+	return _lunge_active
+
+
 func sync_facing_from_camera() -> void:
 	_last_strong_direction = _camera_controller.get_flat_forward()
 	if _last_strong_direction.length_squared() < 0.0001:
