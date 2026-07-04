@@ -10,6 +10,8 @@ bin/
 tools/camera-controller/.venv/
 tools/camera-controller/__pycache__/
 tools/camera-controller/hand_calibration.json
+tools/camera-controller/models/vosk-model-small-en-us-0.15/
+tools/camera-controller/models/vosk-model-small-en-us-0.15.zip
 *.pyc
 
 # Summer Engine local-only state

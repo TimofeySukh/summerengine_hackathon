@@ -60,6 +60,7 @@ The game currently uses the following tracks:
 - `enemies/enemy_spawner.gd` spawns enemies on wave director command
 - Enemy death flashes red, collapses the body, and spawns the existing smoke puff VFX
 - `tools/camera-controller/` runs the real camera sidecar against the Tailscale board API (`cph14.tailcfa96c.ts.net`)
+- Saying "WAVE" in Webcam mode is recognized locally by the sidecar and triggers a UDP `voice_wave` superpower that clears alive enemies
 
 ### Level
 
@@ -147,3 +148,5 @@ The game currently uses the following tracks:
 - Added wave survival loop (`RunDirector`), neon HUD, death-screen run stats, and katana combat feel (shake, hit-stop, slash/kill audio).
 - Fetched the real-camera sidecar and set its default board API host to the Tailscale MagicDNS name `cph14.tailcfa96c.ts.net`.
 - Configured dynamic soundtrack switching: main menu plays "Dansez" by Fasion (`dansez_menu.mp3`) and gameplay plays the BattleBlock Theater theme (`battleblock_theater_menu.ogg`).
+- Designed the voice-triggered WAVE superpower: local wake-word model in the camera sidecar, UDP bridge event, and enemy-clear effect. Spec: `docs/superpowers/specs/2026-07-04-voice-wave-superpower-design.md`.
+- Implemented the first WAVE superpower path: Vosk voice detection in the camera sidecar, UDP `voice_wave` bridge event, and enemy-clear handling in Webcam mode.

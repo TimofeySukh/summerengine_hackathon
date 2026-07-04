@@ -14,7 +14,7 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 [application]
 
-config/name="Heat Wave"
+config/name="Sand Wave"
 run/main_scene="res://ui/main_menu.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 run/max_fps=60
@@ -40,7 +40,7 @@ window/stretch/aspect="keep_height"
 
 [dotnet]
 
-project/assembly_name="HeatWave"
+project/assembly_name="SandWave"
 
 [input]
 

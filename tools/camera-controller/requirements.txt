@@ -4,3 +4,4 @@ requests>=2.31
 pynput>=1.7
 numpy>=1.26
 sounddevice>=0.4
+vosk>=0.3.44

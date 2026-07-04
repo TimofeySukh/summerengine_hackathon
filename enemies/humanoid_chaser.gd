@@ -15,6 +15,9 @@ const SMOKE_PUFF_SCENE := preload("res://enemies/smoke_puff/smoke_puff.tscn")
 @export var separation_radius := 1.35
 @export var separation_strength := 3.2
 @export var commit_speed_multiplier := 1.35
+@export var wall_probe_distance := 1.35
+@export var unstuck_frames := 6
+@export var direct_chase_distance := 12.0
 
 @onready var _visual_root: Node3D = $VisualRoot
 
@@ -26,10 +29,13 @@ var _squad_size := 1
 var _role := SquadRole.FLANKER
 var _can_commit := false
 var _angle_jitter := 0.0
+var _stuck_frames := 0
+var _unstick_side := 1.0
 
 
 func _ready() -> void:
 	_angle_jitter = randf_range(-0.22, 0.22)
+	_unstick_side = 1.0 if randf() > 0.5 else -1.0
 	var roll := randf()
 	if roll < 0.35:
 		_role = SquadRole.STRIKER
@@ -88,6 +94,12 @@ func _compute_move_direction(player: Node3D) -> Vector3:
 	if dist_to_player <= stop_distance:
 		return Vector3.ZERO
 
+	if dist_to_player > direct_chase_distance:
+		var direct := to_player.normalized() + _compute_separation() * 0.35
+		if direct.length_squared() < 0.001:
+			return Vector3.ZERO
+		return direct.normalized()
+
 	var slot_dir := Vector3(
 		cos(_slot_angle + _angle_jitter),
 		0.0,
@@ -100,6 +112,8 @@ func _compute_move_direction(player: Node3D) -> Vector3:
 	var seek := Vector3.ZERO
 	if to_orbit.length() > 0.35:
 		seek = to_orbit.normalized()
+		if _is_direction_blocked(seek):
+			seek = to_player.normalized()
 	elif _can_commit and _role == SquadRole.STRIKER:
 		seek = to_player.normalized()
 	elif dist_to_player > stop_distance + 0.5:
@@ -118,19 +132,141 @@ func _compute_move_direction(player: Node3D) -> Vector3:
 	return direction.normalized()
 
 
+func _is_direction_blocked(direction: Vector3) -> bool:
+	if direction.length_squared() < 0.0001:
+		return false
+	var space_state := get_world_3d().direct_space_state
+	var origin := global_position + Vector3.UP * 0.85
+	var ahead := origin + direction.normalized() * wall_probe_distance * 1.4
+	var query := PhysicsRayQueryParameters3D.create(origin, ahead)
+	query.exclude = [get_rid()]
+	return not space_state.intersect_ray(query).is_empty()
+
+
+func _steer_around_walls(direction: Vector3) -> Vector3:
+	if direction.length_squared() < 0.0001:
+		return direction
+
+	var best := direction
+	var best_clearance := _probe_clearance(direction)
+	if best_clearance > 0.85:
+		return direction
+
+	for angle_deg in [-50.0, -28.0, 28.0, 50.0, 90.0, -90.0]:
+		var rotated := direction.rotated(Vector3.UP, deg_to_rad(angle_deg))
+		var clearance := _probe_clearance(rotated)
+		if clearance > best_clearance:
+			best_clearance = clearance
+			best = rotated
+
+	if best_clearance < 0.2:
+		return _steer_around_walls_single(direction)
+	return best.normalized()
+
+
+func _probe_clearance(direction: Vector3) -> float:
+	var space_state := get_world_3d().direct_space_state
+	var origin := global_position + Vector3.UP * 0.85
+	var ahead := origin + direction.normalized() * wall_probe_distance
+	var query := PhysicsRayQueryParameters3D.create(origin, ahead)
+	query.exclude = [get_rid()]
+	var hit := space_state.intersect_ray(query)
+	if hit.is_empty():
+		return 1.0
+	return origin.distance_to(hit.position) / wall_probe_distance
+
+
+func _steer_around_walls_single(direction: Vector3) -> Vector3:
+	if direction.length_squared() < 0.0001:
+		return direction
+
+	var space_state := get_world_3d().direct_space_state
+	var origin := global_position + Vector3.UP * 0.85
+	var ahead := origin + direction * wall_probe_distance
+	var query := PhysicsRayQueryParameters3D.create(origin, ahead)
+	query.exclude = [get_rid()]
+	query.collision_mask = 0xFFFFFFFF
+	var hit := space_state.intersect_ray(query)
+	if hit.is_empty():
+		return direction
+
+	var normal: Vector3 = hit.normal
+	normal.y = 0.0
+	if normal.length_squared() < 0.0001:
+		return direction
+	normal = normal.normalized()
+
+	var slide := direction.slide(normal)
+	if slide.length_squared() > 0.05:
+		return slide.normalized()
+
+	var tangent := Vector3(-normal.z, 0.0, normal.x) * _unstick_side
+	if direction.dot(tangent) < 0.0:
+		tangent = -tangent
+	return tangent.normalized()
+
+
+func _apply_unstick(direction: Vector3, moved_distance: float) -> Vector3:
+	if direction.length_squared() < 0.0001:
+		return direction
+
+	if moved_distance > 0.02:
+		_stuck_frames = 0
+		return direction
+
+	_stuck_frames += 1
+	if _stuck_frames < unstuck_frames:
+		return direction
+
+	_stuck_frames = 0
+	_unstick_side *= -1.0
+	_nudge_off_wall()
+
+	var slide_collision := get_last_slide_collision()
+	if slide_collision:
+		var normal := slide_collision.get_normal()
+		normal.y = 0.0
+		if normal.length_squared() > 0.0001:
+			return Vector3(-normal.z, 0.0, normal.x).normalized() * _unstick_side
+
+	return Vector3(-direction.z, 0.0, direction.x).normalized() * _unstick_side
+
+
+func _nudge_off_wall() -> void:
+	for i in get_slide_collision_count():
+		var collision := get_slide_collision(i)
+		var normal: Vector3 = collision.get_normal()
+		normal.y = 0.0
+		if normal.length_squared() > 0.0001:
+			global_position += normal.normalized() * 0.65
+			return
+
+	var player := get_tree().get_first_node_in_group("player") as Node3D
+	if player == null:
+		return
+	var to_player := player.global_position - global_position
+	to_player.y = 0.0
+	if to_player.length_squared() > 0.0001:
+		global_position += to_player.normalized() * 0.45
+
+
 func _physics_process(delta: float) -> void:
 	if not _alive:
 		return
 
 	_damage_timer = maxf(0.0, _damage_timer - delta)
 	var target := get_tree().get_first_node_in_group("player") as Node3D
+	var dist := 0.0
+	var wants_move := false
 	if target != null:
 		var to_target := target.global_position - global_position
 		to_target.y = 0.0
-		var dist := to_target.length()
+		dist = to_target.length()
+		wants_move = dist > stop_distance
 
-		if dist > stop_distance:
+		if wants_move:
 			var direction := _compute_move_direction(target)
+			direction = _steer_around_walls(direction)
 			var speed := move_speed
 			if _can_commit and dist < stop_distance * 2.5:
 				speed *= commit_speed_multiplier
@@ -152,7 +288,22 @@ func _physics_process(delta: float) -> void:
 	if not is_on_floor():
 		velocity.y -= gravity * delta
 
+	var position_before := global_position
 	move_and_slide()
+
+	if target != null and wants_move:
+		var moved := Vector2(
+			global_position.x - position_before.x,
+			global_position.z - position_before.z
+		).length()
+		var direction := Vector3(velocity.x, 0.0, velocity.z)
+		if direction.length_squared() > 0.01:
+			direction = direction.normalized()
+			var unstuck_dir := _apply_unstick(direction, moved)
+			if unstuck_dir != direction:
+				velocity.x = unstuck_dir.x * move_speed * 1.25
+				velocity.z = unstuck_dir.z * move_speed * 1.25
+				move_and_slide()
 
 
 func _try_damage_player(target: Node3D) -> void:
