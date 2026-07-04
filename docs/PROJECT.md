@@ -7,7 +7,7 @@
 Surveillance katana survival in a flat night-city arena. **Design target:** CCTV feed (see spec). **Current build:** first-person movement restored — WASD, mouse look, LMB slash.
 
 - **Engine:** Summer Engine (Godot 4.6)
-- **Main scene:** `main.tscn`
+- **Main scene:** `ui/main_menu.tscn` (Play loads `main.tscn`)
 - **Design brief:** `.summer/GameSoul.md`
 - **Surveillance design spec (draft):** `docs/superpowers/specs/2026-07-04-surveillance-camera-design.md`
 - **Agent rules:** `.summer/AGENTS.md`
@@ -27,7 +27,7 @@ Surveillance katana survival in a flat night-city arena. **Design target:** CCTV
 | Mouse | Look |
 | Left mouse | Katana slash |
 | Space | Jump |
-| Esc | Pause |
+| Esc | Pause / resume (in-game) |
 
 ## Asset Policy
 
@@ -63,6 +63,11 @@ The game currently uses the main menu theme (`mainmenu_1.ogg`) from the **Battle
 
 - Autoload [MusicManager](file:///Users/Tim/racegame/level/music/music_manager.gd) loads and plays the BattleBlock Theater main menu theme on loop in the background at a moderate volume (`-12.0 dB`).
 
+### Menus
+
+- **Main menu:** `ui/main_menu.tscn` — title screen with Play and Quit; visible cursor
+- **Pause menu:** `ui/pause_menu.tscn` — instanced in `main.tscn`; Esc pauses the scene tree, shows cursor, Continue / Main Menu
+
 ### Disabled / Legacy (from TPS template)
 
 - Coin economy and coin UI
@@ -73,6 +78,8 @@ The game currently uses the main menu theme (`mainmenu_1.ogg`) from the **Battle
 
 | Path | Role |
 |------|------|
+| `ui/main_menu.tscn` | Title screen (Play → arena) |
+| `ui/pause_menu.tscn` | In-game pause overlay (Esc) |
 | `main.tscn` | Playable level and enemy placement |
 | `player/player.gd` | Movement, attack, damage |
 | `player/camera_controller.gd` | First-person camera |
@@ -106,8 +113,10 @@ The game currently uses the main menu theme (`mainmenu_1.ogg`) from the **Battle
 - Reworked katana attack from rotation swing to straight forward thrust with linear trail VFX.
 - Changed katana attack to epic diagonal slash with arc VFX and combined rotation/position sweep.
 - Reworked diagonal slash to use tween-driven wind/slash/recover instead of euler keyframes.
+- Fixed diagonal slash: hilt pivot arc plus screen-space diagonal path; trail follows blade.
 - Moved the first-person katana viewmodel to the right side of the camera frame.
 - Tuned the katana viewmodel back toward center after the far-right placement overshot.
 - Nudged the katana viewmodel slightly left for a better right-side frame position.
 - Integrated the BattleBlock Theater main menu theme as a looping background track via the new `MusicManager` autoload singleton.
 - Added a licensing warning in the project documentation noting that the soundtrack is copyrighted and must be replaced if the project goes beyond a meme game.
+- Added main menu (`ui/main_menu.tscn`) and in-game pause menu (`ui/pause_menu.tscn`) with Esc toggle, cursor release, Continue, and return to main menu.

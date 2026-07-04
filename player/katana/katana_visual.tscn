@@ -7,5 +7,8 @@
 unique_name_in_owner = true
 script = ExtResource("2_visual")
 
-[node name="Katana" parent="." instance=ExtResource("1_katana")]
-transform = Transform3D(0, -0.11, 0, 0.11, 0, 0, 0, 0, 0.11, 0.02, 0, -0.1)
+[node name="SlashPivot" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="Katana" parent="SlashPivot" instance=ExtResource("1_katana")]
+transform = Transform3D(0, -0.11, 0, 0.11, 0, 0, 0, 0, 0.11, 0.16, 0, -0.08)
