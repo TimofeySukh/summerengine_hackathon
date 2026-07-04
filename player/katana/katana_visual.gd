@@ -1,74 +1,114 @@
+class_name KatanaVisual
 extends Node3D
 
-# Approved ideal FPS katana placement (playtest 2026-07-04). Keep mesh transform in katana_visual.tscn in sync.
-const SLASH_DURATION := 0.32
-const IDLE_POSITION := Vector3(0.14, -0.22, -0.52)
-const IDLE_EULER := Vector3(0.06, 0.10, -0.18)
+enum Hand { LEFT, RIGHT }
 
-const REST_TIP_DIR := Vector3(0.0, 0.0, -1.0)
-const CHAMBER_TIP_RAW := Vector3(-0.34, 0.44, -0.83)
-const CUT_TIP_RAW := Vector3(0.34, -0.44, -0.83)
+const SLASH_DURATION := 0.28
+const HIT_TIME := 0.10
+const SLASH_PEAK := 0.32
 
-const CHAMBER_END := 0.11
-const CUT_END := 0.24
+const MESH_BASIS := Basis(Vector3(0.0, -0.11, 0.0), Vector3(0.11, 0.0, 0.0), Vector3(0.0, 0.0, 0.11))
+const MESH_ORIGIN := Vector3(0.16, 0.0, -0.08)
 
-@onready var _slash_pivot: Node3D = $SlashPivot
+const HAND_LAYOUT := {
+	Hand.LEFT: {
+		"idle_pos": Vector3(-0.58, -0.20, -0.50),
+		"idle_pivot": Vector3.ZERO,
+		"cut_pos": Vector3(-0.18, -0.34, -0.42),
+		"cut_pivot": Vector3(0.55, -0.15, 0.35),
+		"mirror_mesh": true,
+	},
+	Hand.RIGHT: {
+		"idle_pos": Vector3(-0.38, -0.20, -0.50),
+		"idle_pivot": Vector3.ZERO,
+		"cut_pos": Vector3(-0.58, -0.34, -0.42),
+		"cut_pivot": Vector3(0.55, 0.15, -0.35),
+		"mirror_mesh": false,
+	},
+}
 
-var _attack_tween: Tween
-var _slash_axis: Vector3
-var _chamber_angle: float
-var _cut_angle: float
-var _chamber_tip_dir: Vector3
-var _cut_tip_dir: Vector3
+@export var hand: Hand = Hand.RIGHT
+
+signal slash_struck
+
+@onready var _pivot: Node3D = $SlashPivot
+
+var _tween: Tween
+var _idle_pos: Vector3
+var _idle_pivot: Vector3
+var _cut_pos: Vector3
+var _cut_pivot: Vector3
 
 
 func _ready() -> void:
-	_chamber_tip_dir = CHAMBER_TIP_RAW.normalized()
-	_cut_tip_dir = CUT_TIP_RAW.normalized()
-	_slash_axis = _chamber_tip_dir.cross(_cut_tip_dir).normalized()
-	_chamber_angle = REST_TIP_DIR.signed_angle_to(_chamber_tip_dir, _slash_axis)
-	_cut_angle = REST_TIP_DIR.signed_angle_to(_cut_tip_dir, _slash_axis)
+	_setup_hand_pose()
+	_setup_mesh()
 	reset_pose()
-	_boost_materials(_slash_pivot)
+	_boost_materials(_pivot)
+
+
+func is_slashing() -> bool:
+	return _tween != null and _tween.is_valid() and _tween.is_running()
 
 
 func reset_pose() -> void:
-	if _attack_tween and _attack_tween.is_valid():
-		_attack_tween.kill()
-	position = IDLE_POSITION
-	_apply_slash_angle(0.0)
+	if _tween and _tween.is_valid():
+		_tween.kill()
+	_apply_pose(_idle_pos, _idle_pivot)
 
 
 func play_slash() -> void:
-	if _attack_tween and _attack_tween.is_valid():
-		_attack_tween.kill()
+	if is_slashing():
+		return
 
-	_attack_tween = create_tween()
-	_attack_tween.tween_method(_apply_slash_progress, 0.0, 1.0, SLASH_DURATION)
+	if _tween and _tween.is_valid():
+		_tween.kill()
+
+	_tween = create_tween()
+	_tween.set_parallel(true)
+	_tween.tween_method(_apply_slash_progress, 0.0, 1.0, SLASH_DURATION)
+	_tween.tween_callback(func(): slash_struck.emit()).set_delay(HIT_TIME)
+
+
+func _setup_hand_pose() -> void:
+	var layout: Dictionary = HAND_LAYOUT[hand]
+	_idle_pos = layout.idle_pos
+	_idle_pivot = layout.idle_pivot
+	_cut_pos = layout.cut_pos
+	_cut_pivot = layout.cut_pivot
+
+
+func _setup_mesh() -> void:
+	var layout: Dictionary = HAND_LAYOUT[hand]
+	var katana := _pivot.get_node("Katana") as Node3D
+	var mesh_basis := MESH_BASIS
+	var mesh_origin := MESH_ORIGIN
+	if layout.mirror_mesh:
+		mesh_basis = mesh_basis * Basis.from_scale(Vector3(-1.0, 1.0, 1.0))
+		mesh_origin.x = -mesh_origin.x
+	katana.transform = Transform3D(mesh_basis, mesh_origin)
 
 
 func _apply_slash_progress(progress: float) -> void:
-	var angle := 0.0
-
-	if progress <= CHAMBER_END:
-		var local_t := progress / CHAMBER_END
-		local_t = local_t * local_t * (3.0 - 2.0 * local_t)
-		angle = lerpf(0.0, _chamber_angle, local_t)
-	elif progress <= CUT_END:
-		var local_t := (progress - CHAMBER_END) / (CUT_END - CHAMBER_END)
-		local_t = pow(local_t, 0.7)
-		angle = lerpf(_chamber_angle, _cut_angle, local_t)
+	if progress <= SLASH_PEAK:
+		var local_t := progress / SLASH_PEAK
+		local_t = pow(local_t, 0.70)
+		_apply_pose(
+			_idle_pos.lerp(_cut_pos, local_t),
+			_idle_pivot.lerp(_cut_pivot, local_t)
+		)
 	else:
-		var local_t := (progress - CUT_END) / (1.0 - CUT_END)
+		var local_t := (progress - SLASH_PEAK) / (1.0 - SLASH_PEAK)
 		local_t = 1.0 - pow(1.0 - local_t, 2.0)
-		angle = lerpf(_cut_angle, 0.0, local_t)
+		_apply_pose(
+			_cut_pos.lerp(_idle_pos, local_t),
+			_cut_pivot.lerp(_idle_pivot, local_t)
+		)
 
-	_apply_slash_angle(angle)
 
-
-func _apply_slash_angle(angle: float) -> void:
-	var idle_basis := Basis.from_euler(IDLE_EULER)
-	_slash_pivot.basis = Basis(_slash_axis, angle) * idle_basis
+func _apply_pose(pos: Vector3, pivot_euler: Vector3) -> void:
+	position = pos
+	_pivot.rotation = pivot_euler
 
 
 func _boost_materials(node: Node) -> void:
@@ -77,7 +117,7 @@ func _boost_materials(node: Node) -> void:
 		if mesh_instance.mesh == null:
 			return
 
-		mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mesh_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 
 		for surface_idx in mesh_instance.mesh.get_surface_count():
 			var material := mesh_instance.get_active_material(surface_idx)

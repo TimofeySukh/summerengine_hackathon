@@ -11,8 +11,12 @@ enum WEAPON_TYPE { DEFAULT, GRENADE }
 @export var move_speed := 8.0
 ## Speed of shot bullets.
 @export var bullet_speed := 10.0
-## Forward impulse after a melee attack.
-@export var attack_impulse := 10.0
+## Maximum distance the player lunges toward a target during a katana slash.
+@export var attack_lunge_max_distance := 2.8
+## How far from the target center the lunge stops.
+@export var attack_lunge_stop_margin := 0.65
+## Forward lunge distance when no enemy is in range.
+@export var attack_lunge_fallback_distance := 1.1
 ## Movement acceleration (how fast character achieve maximum speed)
 @export var acceleration := 4.0
 ## Jump impulse
@@ -35,6 +39,8 @@ enum WEAPON_TYPE { DEFAULT, GRENADE }
 @onready var _rotation_root: Node3D = $CharacterRotationRoot
 @onready var _camera_controller: CameraController = $CameraController
 @onready var _attack_animation_player: AnimationPlayer = $CharacterRotationRoot/MeleeAnchor/AnimationPlayer
+@onready var _katana_left: KatanaVisual = $CameraController/PlayerCamera/KatanaVisualLeft
+@onready var _katana_right: KatanaVisual = $CameraController/PlayerCamera/KatanaVisualRight
 @onready var _ground_shapecast: ShapeCast3D = $GroundShapeCast
 @onready var _grenade_aim_controller: GrenadeLauncher = $GrenadeLauncher
 @onready var _character_skin: CharacterSkin = $CharacterRotationRoot/CharacterSkin
@@ -55,10 +61,14 @@ enum WEAPON_TYPE { DEFAULT, GRENADE }
 @onready var _shoot_cooldown_tick := shoot_cooldown
 @onready var _grenade_cooldown_tick := grenade_cooldown
 
+var _lunge_direction := Vector3.ZERO
+var _lunge_remaining := 0.0
+var _lunge_speed := 0.0
+
 
 func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-	_camera_controller.setup(self)
+	_camera_controller.call_deferred("setup", self)
 	_grenade_aim_controller.visible = false
 	weapon_switched.emit(WEAPON_TYPE.keys()[0])
 
@@ -66,6 +76,8 @@ func _ready() -> void:
 		_register_input_actions()
 
 	_character_skin.stepped.connect(play_foot_step_sound)
+	_katana_left.slash_struck.connect(perform_katana_hit)
+	_katana_right.slash_struck.connect(perform_katana_hit)
 	_update_health_ui()
 
 
@@ -78,7 +90,7 @@ func _physics_process(delta: float) -> void:
 	if global_position.y < _ground_height:
 		_ground_height = global_position.y
 
-	var is_attacking := Input.is_action_just_pressed("attack") and not _attack_animation_player.is_playing()
+	var is_attacking := Input.is_action_just_pressed("attack") and not _is_katana_slashing()
 	var is_just_attacking := Input.is_action_just_pressed("attack")
 	var is_just_jumping := Input.is_action_just_pressed("jump") and is_on_floor()
 	var is_aiming := false
@@ -94,9 +106,15 @@ func _physics_process(delta: float) -> void:
 
 	var y_velocity := velocity.y
 	velocity.y = 0.0
-	velocity = velocity.lerp(_move_direction * move_speed, acceleration * delta)
-	if _move_direction.length() == 0 and velocity.length() < stopping_speed:
+	if _lunge_remaining > 0.0:
+		_apply_attack_lunge(delta)
 		velocity = Vector3.ZERO
+	elif _is_katana_slashing():
+		velocity = Vector3.ZERO
+	else:
+		velocity = velocity.lerp(_move_direction * move_speed, acceleration * delta)
+		if _move_direction.length() == 0 and velocity.length() < stopping_speed:
+			velocity = Vector3.ZERO
 	velocity.y = y_velocity
 
 	if is_aiming:
@@ -112,6 +130,11 @@ func _physics_process(delta: float) -> void:
 
 	if is_attacking and is_just_attacking:
 		attack()
+
+	if Input.is_action_just_pressed("katana_slash_left"):
+		_slash_with_katana(_katana_left)
+	if Input.is_action_just_pressed("katana_slash_right"):
+		_slash_with_katana(_katana_right)
 
 	velocity.y += _gravity * delta
 
@@ -146,12 +169,135 @@ func _physics_process(delta: float) -> void:
 
 
 func attack() -> void:
-	_attack_animation_player.play("Attack")
+	_slash_with_katana(_katana_right)
+
+
+func _slash_with_katana(katana: KatanaVisual) -> void:
+	if katana.is_slashing():
+		return
+	_begin_attack_lunge()
+	katana.play_slash()
 	_character_skin.punch()
+
+
+func _is_katana_slashing() -> bool:
+	return _katana_left.is_slashing() or _katana_right.is_slashing()
 
 
 func perform_katana_hit() -> void:
 	_hit_with_katana()
+
+
+func _begin_attack_lunge() -> void:
+	_lunge_direction = Vector3.ZERO
+	_lunge_remaining = 0.0
+	_lunge_speed = 0.0
+
+	var lunge := _compute_attack_lunge()
+	if lunge.distance < 0.05:
+		return
+
+	_lunge_direction = lunge.direction
+	_lunge_remaining = lunge.distance
+	_lunge_speed = lunge.distance / KatanaVisual.HIT_TIME
+
+
+func _apply_attack_lunge(delta: float) -> void:
+	if _lunge_remaining <= 0.0:
+		return
+
+	var step := minf(_lunge_speed * delta, _lunge_remaining)
+	var motion := _lunge_direction * step
+	if not test_move(global_transform, motion):
+		_lunge_remaining = 0.0
+		return
+
+	global_position += motion
+	_lunge_remaining -= step
+
+
+func _compute_attack_lunge() -> Dictionary:
+	var origin := global_position
+	var aim_collider := _camera_controller.get_aim_collider()
+	if aim_collider is Node3D:
+		var body := aim_collider as Node3D
+		if body.is_in_group("damageables") and body != self:
+			return _lunge_toward_node(body, origin)
+
+	var nearest := _find_nearest_damageable(origin, attack_lunge_max_distance)
+	if nearest != null:
+		return _lunge_toward_node(nearest, origin)
+
+	return _lunge_forward(origin, attack_lunge_fallback_distance)
+
+
+func _lunge_toward_node(target: Node3D, origin: Vector3) -> Dictionary:
+	var to_target := target.global_position - origin
+	to_target.y = 0.0
+	var distance := to_target.length()
+	if distance < 0.05:
+		return {"direction": Vector3.ZERO, "distance": 0.0}
+
+	var direction := to_target / distance
+	var travel := clampf(distance - attack_lunge_stop_margin, 0.0, attack_lunge_max_distance)
+	return {"direction": direction, "distance": travel}
+
+
+func _lunge_forward(origin: Vector3, distance: float) -> Dictionary:
+	var forward := _camera_controller.global_transform.basis * Vector3.FORWARD
+	forward.y = 0.0
+	if forward.length_squared() < 0.0001:
+		return {"direction": Vector3.ZERO, "distance": 0.0}
+
+	forward = forward.normalized()
+	var travel := _raycast_lunge_distance(origin, forward, distance)
+	return {"direction": forward, "distance": travel}
+
+
+func _raycast_lunge_distance(origin: Vector3, direction: Vector3, max_distance: float) -> float:
+	var space_state := get_world_3d().direct_space_state
+	var ray_origin := origin + Vector3.UP * 0.6
+	var ray_target := ray_origin + direction * max_distance
+	var ray_query := PhysicsRayQueryParameters3D.create(ray_origin, ray_target)
+	ray_query.exclude = [get_rid()]
+	var hit := space_state.intersect_ray(ray_query)
+	if hit.is_empty():
+		return max_distance
+
+	var hit_distance := ray_origin.distance_to(hit.position) - 0.35
+	return clampf(hit_distance, 0.0, max_distance)
+
+
+func _find_nearest_damageable(origin: Vector3, max_range: float) -> Node3D:
+	var forward := _camera_controller.global_transform.basis * Vector3.FORWARD
+	forward.y = 0.0
+	if forward.length_squared() < 0.0001:
+		return null
+	forward = forward.normalized()
+
+	var best: Node3D = null
+	var best_distance := max_range
+	var cos_limit := cos(deg_to_rad(55.0))
+
+	for node in get_tree().get_nodes_in_group("damageables"):
+		if node == self or not node is Node3D:
+			continue
+
+		var body := node as Node3D
+		var offset := body.global_position - origin
+		offset.y = 0.0
+		var distance := offset.length()
+		if distance > max_range or distance < 0.05:
+			continue
+
+		if offset.normalized().dot(forward) < cos_limit:
+			continue
+
+		if distance < best_distance:
+			best = body
+			best_distance = distance
+
+	return best
 
 
 func shoot() -> void:
@@ -171,7 +317,7 @@ func reset_position() -> void:
 
 
 func _get_camera_oriented_input() -> Vector3:
-	if _attack_animation_player.is_playing():
+	if _is_katana_slashing():
 		return Vector3.ZERO
 
 	var raw_input := Input.get_vector("move_left", "move_right", "move_up", "move_down")
@@ -285,6 +431,8 @@ func _register_input_actions() -> void:
 		"camera_right": KEY_E,
 		"camera_up": KEY_R,
 		"camera_down": KEY_F,
+		"katana_slash_left": KEY_LEFT,
+		"katana_slash_right": KEY_RIGHT,
 	}
 	for action in INPUT_ACTIONS:
 		if InputMap.has_action(action):

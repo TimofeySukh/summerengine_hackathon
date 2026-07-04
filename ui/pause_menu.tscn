@@ -1,0 +1,82 @@
+[gd_scene load_steps=4 format=3 uid="uid://c8pausemenu01"]
+
+[ext_resource type="Script" path="res://ui/pause_menu.gd" id="1_pause"]
+[ext_resource type="FontFile" uid="uid://ch2aef1jex81f" path="res://demo_page/fonts/Montserrat-Bold.ttf" id="2_font_bold"]
+[ext_resource type="FontFile" uid="uid://t50djx4didf7" path="res://demo_page/fonts/Montserrat-Medium.ttf" id="3_font_medium"]
+
+[node name="PauseMenu" type="Node"]
+process_mode = 3
+script = ExtResource("1_pause")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+process_mode = 3
+layer = 128
+
+[node name="PauseRoot" type="Control" parent="CanvasLayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="DimOverlay" type="ColorRect" parent="CanvasLayer/PauseRoot"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.02, 0.04, 0.09, 0.72)
+
+[node name="CenterContainer" type="CenterContainer" parent="CanvasLayer/PauseRoot"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="CanvasLayer/PauseRoot/CenterContainer"]
+custom_minimum_size = Vector2(420, 0)
+layout_mode = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="CanvasLayer/PauseRoot/CenterContainer/Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 48
+theme_override_constants/margin_top = 40
+theme_override_constants/margin_right = 48
+theme_override_constants/margin_bottom = 40
+
+[node name="VBox" type="VBoxContainer" parent="CanvasLayer/PauseRoot/CenterContainer/Panel/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 24
+alignment = 1
+
+[node name="Title" type="Label" parent="CanvasLayer/PauseRoot/CenterContainer/Panel/MarginContainer/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.82, 1, 1)
+theme_override_fonts/font = ExtResource("2_font_bold")
+theme_override_font_sizes/font_size = 42
+text = "PAUSED"
+horizontal_alignment = 1
+
+[node name="ContinueButton" type="Button" parent="CanvasLayer/PauseRoot/CenterContainer/Panel/MarginContainer/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 52)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_default_cursor_shape = 2
+theme_override_fonts/font = ExtResource("3_font_medium")
+theme_override_font_sizes/font_size = 24
+text = "Continue"
+
+[node name="MainMenuButton" type="Button" parent="CanvasLayer/PauseRoot/CenterContainer/Panel/MarginContainer/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 52)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_default_cursor_shape = 2
+theme_override_fonts/font = ExtResource("3_font_medium")
+theme_override_font_sizes/font_size = 24
+text = "Main Menu"

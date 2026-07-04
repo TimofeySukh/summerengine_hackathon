@@ -1,13 +1,37 @@
 # Katana Viewmodel Tuning
 
-Approved first-person placement (playtest 2026-07-04):
+## Test first (no MCP required)
 
-| Property | Value |
-|----------|-------|
-| `IDLE_POSITION` | `(0.14, -0.22, -0.52)` |
-| `IDLE_EULER` | `(0.06, 0.10, -0.18)` |
-| Mesh transform | `Transform3D(0, -0.11, 0, 0.11, 0, 0, 0, 0, 0.11, 0.16, 0, -0.08)` |
+Run this from terminal:
 
-Do not change these without an in-game playtest.
+```bash
+/Applications/Summer.app/Contents/MacOS/Summer --headless --path . -s res://tools/katana_smoke_test.gd
+```
 
-Slash arc uses a fixed diagonal rotation plane (`REST_TIP_DIR = forward`) on top of this idle pose.
+Expected:
+
+```
+KatanaVisualLeft screen=(~430, ~1000) on_screen=true
+KatanaVisualRight screen=(~1628, ~1000) on_screen=true
+RESULT:PASS
+```
+
+Only tune constants after PASS.
+
+## Dual wield layout
+
+Tuned in Summer headless against 1920x1080 viewport.
+
+| Hand | Idle local pos | Slash cut local pos |
+|------|----------------|---------------------|
+| Left | `(-0.58, -0.20, -0.50)` | `(-0.18, -0.34, -0.42)` → lower-right |
+| Right | `(-0.38, -0.20, -0.50)` | `(-0.58, -0.34, -0.42)` → lower-left |
+
+Mesh uses approved basis/origin; left hand mirrors mesh on X.
+
+## Controls
+
+| Input | Action |
+|-------|--------|
+| `Left Arrow` | Left katana slash |
+| `Right Arrow` | Right katana slash |

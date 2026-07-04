@@ -67,10 +67,13 @@ func _process(delta: float) -> void:
 
 
 func setup(anchor: CharacterBody3D) -> void:
+	if camera == null:
+		camera = $PlayerCamera
 	_anchor = anchor
 	global_transform = _anchor.global_transform
 	_offset = global_transform.origin - anchor.global_transform.origin
 	set_pivot(CAMERA_PIVOT.THIRD_PERSON)
+	camera.current = true
 	camera.global_transform = camera.global_transform.interpolate_with(_pivot.global_transform, 0.1)
 	_camera_spring_arm.add_excluded_object(_anchor.get_rid())
 	_camera_raycast.add_exception_rid(_anchor.get_rid())
