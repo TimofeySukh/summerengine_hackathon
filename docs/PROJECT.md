@@ -47,7 +47,7 @@ No WASD body movement. No auto-aim or auto camera tracking.
 - Single rotatable CCTV mount (`SurveillanceMount`, `player/camera_controller.gd`)
 - Feed camera with katana viewmodel and slash ray (`FeedCamera`, `player/katana/`)
 - Voice jog bridge: `player/voice_jog_listener.gd` (M/N now; mic keywords later)
-- CC BY 3.0 katana model; procedural slash arc on swing (`player/katana/katana_visual.gd`)
+- CC BY 3.0 katana model; procedural straight thrust trail on stab (`player/katana/katana_visual.gd`)
 - Slash hits via camera ray + tight shape query — no magnet hitboxes
 
 ### Enemies
@@ -94,6 +94,7 @@ No WASD body movement. No auto-aim or auto camera tracking.
 - Fixed katana jitter: removed per-frame global sync feedback loop; katana is a normal child of `PlayerCamera`.
 - Updated project docs to match the current night-city chaser slice.
 - Added a free procedural katana slash arc and reused the existing smoke puff for chaser death VFX.
+- Reworked the katana attack from a rotating swing into a straight forward stab with a linear thrust trail.
 - **Design pivot:** documented surveillance-only final gameplay (manual camera rotate, one-button slash, no auto-aim). WASD prototype is temporary. Spec: `docs/superpowers/specs/2026-07-04-surveillance-camera-design.md`.
 - **Design decision:** rejected auto-aim and auto camera tracking; mouse look in prototype maps to future camera pan.
 - **Design decision:** v1 uses **one rotatable security camera** — no multi-post feed switching.
