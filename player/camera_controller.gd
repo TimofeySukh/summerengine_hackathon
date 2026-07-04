@@ -109,7 +109,7 @@ func reset_webcam_yaw_baseline() -> void:
 
 
 func apply_webcam_torso_yaw(torso_deg: float, delta: float) -> void:
-	if isnan(_webcam_yaw_baseline):
+	if is_nan(_webcam_yaw_baseline):
 		_webcam_yaw_baseline = torso_deg
 		_webcam_spawn_yaw = _euler_rotation.y
 
