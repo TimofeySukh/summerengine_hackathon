@@ -93,3 +93,4 @@ Do not create assets from scratch (placeholder boxes, procedural meshes, etc.). 
 - **Proposed:** microphone **"move"** / **"stop"** — camera jogs forward along its pan path, then stops (slash stays on button).
 - **Implemented surveillance slice:** removed WASD/jump locomotion; single `SurveillanceMount` CCTV feed; mouse pan, M/N jog, LMB slash from camera ray.
 - **Reverted surveillance slice** back to first-person WASD + mouse look per user request.
+- Moved the first-person katana viewmodel farther right in the camera frame.

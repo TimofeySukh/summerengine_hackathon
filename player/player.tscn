@@ -146,7 +146,7 @@ target_position = Vector3(0, 0, -100)
 debug_shape_custom_color = Color(0, 0, 0, 0)
 
 [node name="KatanaVisual" parent="CameraController/PlayerCamera" instance=ExtResource("5_katana")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.14, -0.22, -0.52)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.47, -0.22, -0.52)
 
 [node name="GrenadeLauncher" parent="." instance=ExtResource("3_54qc4")]
 
