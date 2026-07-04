@@ -10,7 +10,9 @@ from typing import Literal
 from hand_tracker import HandFrame
 
 Hand = Literal["left", "right"]
-MAX_PREVIEW_BYTES = 60_000
+# macOS UDP datagrams fail above ~9 KiB in practice; base64 adds ~33% overhead.
+MAX_UDP_PAYLOAD = 8192
+MAX_PREVIEW_JPEG = 5000
 
 
 class GameBridge:
@@ -22,10 +24,16 @@ class GameBridge:
     def close(self) -> None:
         self._sock.close()
 
-    def _send(self, payload: dict) -> None:
+    def _send(self, payload: dict) -> bool:
         data = json.dumps(payload, separators=(",", ":")).encode("utf-8")
-        self._sock.sendto(data, self._addr)
-        self.packets_sent += 1
+        if len(data) > MAX_UDP_PAYLOAD:
+            return False
+        try:
+            self._sock.sendto(data, self._addr)
+            self.packets_sent += 1
+            return True
+        except OSError:
+            return False
 
     def ping(self) -> None:
         self._send({"v": 1, "type": "ping"})
@@ -33,26 +41,22 @@ class GameBridge:
     def send_slash(self, hand: Hand) -> None:
         self._send({"v": 1, "type": "slash", "hand": hand})
 
-    def send_yaw(self, deg: float) -> None:
-        self._send({"v": 1, "type": "yaw", "deg": round(deg, 2)})
-
-    def send_hands(self, frame: HandFrame, *, yaw_deg: float | None = None) -> None:
-        payload = {
-            "v": 1,
-            "type": "hands",
-            "lx": round(frame.lx, 4),
-            "ly": round(frame.ly, 4),
-            "rx": round(frame.rx, 4),
-            "ry": round(frame.ry, 4),
-        }
-        if yaw_deg is not None:
-            payload["deg"] = round(yaw_deg, 2)
-        self._send(payload)
-
-    def send_preview(self, jpeg: bytes) -> None:
-        if not jpeg or len(jpeg) > MAX_PREVIEW_BYTES:
-            return
+    def send_hands(self, frame: HandFrame) -> None:
         self._send(
+            {
+                "v": 1,
+                "type": "hands",
+                "lx": round(frame.lx, 4),
+                "ly": round(frame.ly, 4),
+                "rx": round(frame.rx, 4),
+                "ry": round(frame.ry, 4),
+            }
+        )
+
+    def send_preview(self, jpeg: bytes) -> bool:
+        if not jpeg or len(jpeg) > MAX_PREVIEW_JPEG:
+            return False
+        return self._send(
             {
                 "v": 1,
                 "type": "preview",

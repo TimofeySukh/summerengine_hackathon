@@ -36,13 +36,15 @@ const HAND_LAYOUT := {
 
 @export var hand: Hand = Hand.RIGHT
 
-@export var webcam_pos_scale := Vector2(0.52, 0.62)
-@export var webcam_max_offset := 0.38
+@export var webcam_pos_scale := Vector2(0.48, 0.58)
+@export var webcam_max_offset := 0.28
 @export var webcam_smoothing := 18.0
+@export var webcam_handle_screen_margin := 52.0
 
 signal slash_struck
 
 @onready var _pivot: Node3D = $SlashPivot
+@onready var _camera: Camera3D = get_parent() as Camera3D
 
 var _tween: Tween
 var _idle_pos: Vector3
@@ -69,13 +71,47 @@ func set_webcam_tracking(enabled: bool) -> void:
 func set_webcam_hand_offset(offset_x: float, offset_y: float) -> void:
 	var ox := clampf(offset_x * webcam_pos_scale.x, -webcam_max_offset, webcam_max_offset)
 	var oy := clampf(offset_y * webcam_pos_scale.y, -webcam_max_offset, webcam_max_offset)
-	_webcam_target_pos = _idle_pos + Vector3(ox, oy, 0.0)
+	_webcam_target_pos = _clamp_handle_on_screen(_idle_pos + Vector3(ox, oy, 0.0))
+
+
+func _clamp_handle_on_screen(local_pos: Vector3) -> Vector3:
+	if _camera == null:
+		return local_pos
+
+	var viewport_size := get_viewport().get_visible_rect().size
+	var margin := webcam_handle_screen_margin
+	var result := local_pos
+
+	for _i in 8:
+		var global_pos := _camera.to_global(result)
+		var screen := _camera.unproject_position(global_pos)
+		if screen.z < 0.0:
+			break
+
+		var clamped := Vector2(
+			clampf(screen.x, margin, viewport_size.x - margin),
+			clampf(screen.y, margin, viewport_size.y - margin)
+		)
+		if Vector2(screen.x, screen.y).distance_to(clamped) < 1.5:
+			break
+
+		var ray_origin := _camera.project_ray_origin(clamped)
+		var ray_dir := _camera.project_ray_normal(clamped)
+		var plane_normal := -_camera.global_transform.basis.z
+		var denom := ray_dir.dot(plane_normal)
+		if absf(denom) < 0.0001:
+			break
+		var t := (global_pos - ray_origin).dot(plane_normal) / denom
+		result = _camera.to_local(ray_origin + ray_dir * t)
+
+	return result
 
 
 func _process(delta: float) -> void:
 	if not _webcam_tracking or is_slashing():
 		return
-	position = position.lerp(_webcam_target_pos, minf(1.0, delta * webcam_smoothing))
+	var next := position.lerp(_webcam_target_pos, minf(1.0, delta * webcam_smoothing))
+	position = _clamp_handle_on_screen(next)
 	_pivot.rotation = _idle_pivot
 
 
@@ -169,6 +205,8 @@ func _apply_slash_progress(progress: float) -> void:
 
 
 func _apply_pose(pos: Vector3, pivot_euler: Vector3) -> void:
+	if _webcam_tracking:
+		pos = _clamp_handle_on_screen(pos)
 	position = pos
 	_pivot.rotation = pivot_euler
 

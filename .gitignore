@@ -9,6 +9,7 @@ bin/
 # Python (tools/camera-controller)
 tools/camera-controller/.venv/
 tools/camera-controller/__pycache__/
+tools/camera-controller/hand_calibration.json
 *.pyc
 
 # Summer Engine local-only state

@@ -37,7 +37,7 @@ func _update_control_hint() -> void:
 	if ControlMode.is_webcam():
 		_control_hint.text = """Webcam mode: camera opens in a separate Katana Pose window.
 Move your hands — katanas follow your wrists. Slash to attack.
-Turn torso to look. WASD to move."""
+WASD to move."""
 	else:
 		_control_hint.text = "WASD move · mouse look · <-/-> katana slashes"
 

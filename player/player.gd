@@ -101,7 +101,6 @@ func _ready() -> void:
 	_camera_controller.call_deferred("setup", self)
 	if ControlMode.is_webcam():
 		CameraInputBridge.reset_session()
-		_camera_controller.reset_webcam_yaw_baseline()
 		_katana_left.set_webcam_tracking(true)
 		_katana_right.set_webcam_tracking(true)
 		if not WebcamLauncher.is_running():
@@ -185,9 +184,7 @@ func _physics_process(delta: float) -> void:
 	else:
 		_poll_webcam_slash()
 		_update_webcam_katanas()
-		if CameraInputBridge.has_torso_yaw():
-			_camera_controller.apply_webcam_torso_yaw(CameraInputBridge.get_torso_yaw(), delta)
-		elif not _webcam_warned and not CameraInputBridge.is_stream_active():
+		if not _webcam_warned and not CameraInputBridge.is_stream_active():
 			_webcam_warned = true
 			push_warning("Webcam mode: waiting for pose_stream camera feed...")
 

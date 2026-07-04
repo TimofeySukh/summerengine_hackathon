@@ -16,9 +16,15 @@ from audio_player import BoardAudioPlayer
 from key_controller import ArrowKeyController
 from mjpeg_reader import MjpegStreamReader
 from slash_detector import SlashDetector, draw_slash_overlay, draw_wrist_markers
-from torso_tracker import TorsoTracker, draw_torso_widget
 from game_bridge import GameBridge
 from hand_tracker import compute_hand_frame
+from hand_calibration import (
+    CalibratorPhase,
+    DEFAULT_CALIBRATION_PATH,
+    HandCalibrator,
+    HandCalibration,
+    load_calibration,
+)
 from mediapipe.tasks import python as mp_tasks
 from mediapipe.tasks.python.vision import drawing_styles, drawing_utils
 from mediapipe.tasks.python import vision
@@ -96,11 +102,9 @@ def add_hud(
     *,
     fps: float,
     pose_fps: float,
-    yaw_deg: float | None = None,
     audio_ok: bool = False,
     keys_left: int = 0,
     keys_right: int = 0,
-    motion_state: str = "none",
 ) -> None:
     cv2.putText(
         frame,
@@ -112,23 +116,10 @@ def add_hud(
         1,
         cv2.LINE_AA,
     )
-    y = 40
-    if yaw_deg is not None:
-        cv2.putText(
-            frame,
-            f"torso yaw {yaw_deg:+.0f} deg (approx)",
-            (8, y),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.45,
-            (180, 220, 255),
-            1,
-            cv2.LINE_AA,
-        )
-        y += 20
     cv2.putText(
         frame,
-        f"motion: {motion_state} | arrows: left={keys_left} right={keys_right}",
-        (8, y),
+        f"slashes: left={keys_left} right={keys_right}",
+        (8, 40),
         cv2.FONT_HERSHEY_SIMPLEX,
         0.42,
         (200, 200, 200),
@@ -149,7 +140,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--game-bridge",
         action="store_true",
-        help="Send slash/yaw events to Heat Wave over UDP (port 9847)",
+        help="Send slash/hand events to Heat Wave over UDP (port 9847)",
     )
     parser.add_argument("--game-host", default="127.0.0.1")
     parser.add_argument("--game-port", type=int, default=9847)
@@ -159,27 +150,10 @@ def parse_args() -> argparse.Namespace:
         help="With --game-bridge, also press arrow keys locally",
     )
     parser.add_argument(
-        "--no-motion-keys",
-        action="store_true",
-        help="Disable torso-yaw Q/E camera key emulation",
-    )
-    parser.add_argument(
         "--key-cooldown",
         type=float,
         default=0.35,
         help="Seconds between arrow key presses per hand",
-    )
-    parser.add_argument(
-        "--motion-deadzone",
-        type=float,
-        default=18.0,
-        help="Torso yaw degrees before holding Q/E for camera rotation",
-    )
-    parser.add_argument(
-        "--motion-release-zone",
-        type=float,
-        default=9.0,
-        help="Torso yaw degrees below this releases held camera rotation",
     )
     parser.add_argument("--model", type=Path, default=None)
     parser.add_argument("--complexity", choices=tuple(MODEL_VARIANTS), default="lite")
@@ -216,6 +190,16 @@ def parse_args() -> argparse.Namespace:
         "--no-pose",
         action="store_true",
         help="Show raw stream only (debug stream fps)",
+    )
+    parser.add_argument(
+        "--recalibrate",
+        action="store_true",
+        help="Force hand calibration (T-pose, then arms at rest)",
+    )
+    parser.add_argument(
+        "--skip-calibration",
+        action="store_true",
+        help="Skip calibration UI (use saved file or defaults)",
     )
     return parser.parse_args()
 
@@ -278,7 +262,7 @@ def detect_pose(
     return result.pose_landmarks[0]
 
 
-def encode_preview(frame_bgr: np.ndarray, *, width: int = 360) -> bytes | None:
+def encode_preview(frame_bgr: np.ndarray, *, width: int = 240, quality: int = 45) -> bytes | None:
     h, frame_w = frame_bgr.shape[:2]
     if frame_w <= 0:
         return None
@@ -288,7 +272,7 @@ def encode_preview(frame_bgr: np.ndarray, *, width: int = 360) -> bytes | None:
         (width, max(1, int(h * scale))),
         interpolation=cv2.INTER_LINEAR,
     )
-    ok, buf = cv2.imencode(".jpg", small, [int(cv2.IMWRITE_JPEG_QUALITY), 65])
+    ok, buf = cv2.imencode(".jpg", small, [int(cv2.IMWRITE_JPEG_QUALITY), quality])
     if not ok:
         return None
     return bytes(buf)
@@ -306,7 +290,6 @@ def main() -> int:
         min_travel_ratio=args.slash_min_travel_ratio,
         cooldown_s=args.slash_cooldown,
     )
-    torso_tracker = TorsoTracker()
     use_keys = not args.no_keys and not (args.game_bridge and not args.also_keys)
     key_controller = None if not use_keys else ArrowKeyController(cooldown_s=args.key_cooldown)
     game_bridge = None
@@ -321,11 +304,25 @@ def main() -> int:
         print(f"Audio: {args.audio} (single client — close ffplay/other listeners first)")
     if key_controller is not None:
         print(f"Arrow keys: left hand -> Left, right hand -> Right ({key_controller.backend})")
-        if not args.no_motion_keys:
-            print(
-                "Motion keys: torso yaw -> hold Q/E "
-                f"(deadzone {args.motion_deadzone:.0f} deg)"
-            )
+
+    hand_calibration: HandCalibration | None = None
+    calibrator = HandCalibrator(path=DEFAULT_CALIBRATION_PATH)
+    if args.skip_calibration:
+        hand_calibration = load_calibration(DEFAULT_CALIBRATION_PATH) or HandCalibration()
+        calibrator.calibration = hand_calibration
+        calibrator.phase = CalibratorPhase.SKIPPED
+        print("Hand calibration skipped.")
+    elif args.recalibrate:
+        print("Hand calibration: T-pose, then arms at rest.")
+    else:
+        loaded = load_calibration(DEFAULT_CALIBRATION_PATH)
+        if loaded is not None:
+            hand_calibration = loaded
+            calibrator.calibration = loaded
+            calibrator.phase = CalibratorPhase.SKIPPED
+            print(f"Loaded hand calibration from {DEFAULT_CALIBRATION_PATH.name}")
+        else:
+            print("No saved calibration — T-pose + rest setup on start.")
 
     window_name = "Katana Pose"
     preview_w, preview_h = 640, 480
@@ -344,9 +341,8 @@ def main() -> int:
     stream_frame_no = 0
     last_landmarks = None
     display_frame: np.ndarray | None = None
-    torso_yaw: float | None = None
 
-    print("Running. Keys: q or Esc = quit")
+    print("Running. Keys: q or Esc = quit, c = recalibrate hands")
     try:
         while True:
             now = time.monotonic()
@@ -360,7 +356,7 @@ def main() -> int:
                 if got_new_frame:
                     stream_frame_no += 1
                     frames_since_report += 1
-                    if game_bridge is not None and stream_frame_no % 2 == 0:
+                    if game_bridge is not None and args.no_display and stream_frame_no % 3 == 0:
                         preview = encode_preview(display_frame)
                         if preview is not None:
                             game_bridge.send_preview(preview)
@@ -400,29 +396,42 @@ def main() -> int:
                 )
                 if last_landmarks is not None:
                     poses_since_report += 1
-                    torso_yaw = torso_tracker.update(last_landmarks)
-                    hand_frame = compute_hand_frame(last_landmarks)
-                    if game_bridge is not None and hand_frame is not None:
-                        game_bridge.send_hands(hand_frame, yaw_deg=torso_yaw)
-                    elif game_bridge is not None and torso_yaw is not None:
-                        game_bridge.send_yaw(torso_yaw)
-                    if key_controller is not None and not args.no_motion_keys:
-                        key_controller.update_camera_yaw(
-                            torso_yaw,
-                            deadzone_deg=args.motion_deadzone,
-                            release_zone_deg=args.motion_release_zone,
+                    if not calibrator.blocks_tracking:
+                        hand_frame = compute_hand_frame(last_landmarks)
+                        if hand_frame is not None and hand_calibration is not None:
+                            hand_frame = hand_calibration.apply(hand_frame)
+                        if game_bridge is not None and hand_frame is not None:
+                            game_bridge.send_hands(hand_frame)
+                        slash_event = slash_detector.update(
+                            last_landmarks,
+                            frame_w=display_frame.shape[1],
+                            frame_h=display_frame.shape[0],
                         )
-                    slash_event = slash_detector.update(
-                        last_landmarks,
-                        frame_w=display_frame.shape[1],
-                        frame_h=display_frame.shape[0],
-                    )
-                    if slash_event is not None:
-                        if key_controller is not None:
-                            key_controller.on_hand_slash(slash_event.hand)
-                        if game_bridge is not None:
-                            game_bridge.send_slash(slash_event.hand)
-                            print(f"GAME slash {slash_event.hand} ({slash_event.direction})")
+                        if slash_event is not None:
+                            if key_controller is not None:
+                                key_controller.on_hand_slash(slash_event.hand)
+                            if game_bridge is not None:
+                                game_bridge.send_slash(slash_event.hand)
+                                print(f"GAME slash {slash_event.hand} ({slash_event.direction})")
+
+            if calibrator.blocks_tracking:
+                calibrator.update(last_landmarks)
+                if calibrator.calibration is not None and calibrator.ready:
+                    hand_calibration = calibrator.calibration
+                frame = display_frame.copy()
+                if last_landmarks is not None and not args.no_skeleton:
+                    draw_pose(frame, last_landmarks)
+                    draw_wrist_markers(frame, last_landmarks)
+                calibrator.draw_overlay(frame)
+                if not args.no_display:
+                    cv2.imshow(window_name, frame)
+                    key = cv2.waitKey(1) & 0xFF
+                    calibrator.handle_key(key)
+                    if key in (ord("q"), 27):
+                        break
+                elif not got_new_frame:
+                    time.sleep(0.001)
+                continue
 
             if last_landmarks is not None or slash_detector.flashes:
                 frame = display_frame.copy()
@@ -431,21 +440,16 @@ def main() -> int:
                         draw_pose(frame, last_landmarks)
                     draw_wrist_markers(frame, last_landmarks)
                 draw_slash_overlay(frame, slash_detector)
-                draw_torso_widget(frame, yaw_deg=torso_yaw)
             else:
                 frame = display_frame
-                if torso_yaw is not None:
-                    draw_torso_widget(frame, yaw_deg=torso_yaw)
 
             add_hud(
                 frame,
                 fps=stream_fps,
                 pose_fps=pose_fps,
-                yaw_deg=torso_yaw,
                 audio_ok=audio_player.connected if audio_player is not None else False,
                 keys_left=key_controller.total_left if key_controller else 0,
                 keys_right=key_controller.total_right if key_controller else 0,
-                motion_state=key_controller.camera_direction if key_controller else "none",
             )
             if game_bridge is not None:
                 cv2.putText(
@@ -470,13 +474,17 @@ def main() -> int:
 
             if not args.no_display:
                 cv2.imshow(window_name, frame)
-                if (cv2.waitKey(1) & 0xFF) in (ord("q"), 27):
+                key = cv2.waitKey(1) & 0xFF
+                if key in (ord("q"), 27):
                     break
+                if key == ord("c"):
+                    calibrator = HandCalibrator(path=DEFAULT_CALIBRATION_PATH)
+                    calibrator.start()
+                    hand_calibration = None
+                    print("Recalibrating hands...")
             elif not got_new_frame:
                 time.sleep(0.001)
     finally:
-        if key_controller is not None:
-            key_controller.release_camera_motion()
         reader.stop()
         if audio_player is not None:
             audio_player.stop()

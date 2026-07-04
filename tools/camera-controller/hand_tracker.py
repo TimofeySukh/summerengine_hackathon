@@ -52,10 +52,11 @@ def compute_hand_frame(landmarks, *, min_visibility: float = 0.5) -> HandFrame |
     if span < 1e-4:
         return None
 
-    # Image coords: y grows downward. Mirror x so the player's left hand maps to the left katana.
-    lx = -(lw.x - center_x) / span
+    # Board camera is mirrored: keep +y as screen-up, but do not flip x (MediaPipe
+    # already labels left/right from the player's body, not the mirrored image).
+    lx = (lw.x - center_x) / span
     ly = -(lw.y - center_y) / span
-    rx = -(rw.x - center_x) / span
+    rx = (rw.x - center_x) / span
     ry = -(rw.y - center_y) / span
 
     return HandFrame(

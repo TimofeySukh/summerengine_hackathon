@@ -7,8 +7,6 @@ const STALE_MS := 2000
 
 var _peer: PacketPeerUDP
 var _slash_queue: Array[String] = []
-var _latest_torso_yaw := 0.0
-var _has_torso_yaw := false
 var _left_hand_offset := Vector2.ZERO
 var _right_hand_offset := Vector2.ZERO
 var _has_hands := false
@@ -38,14 +36,6 @@ func poll_slash() -> String:
 	return _slash_queue.pop_front()
 
 
-func get_torso_yaw() -> float:
-	return _latest_torso_yaw
-
-
-func has_torso_yaw() -> bool:
-	return _has_torso_yaw
-
-
 func get_left_hand_offset() -> Vector2:
 	return _left_hand_offset
 
@@ -72,7 +62,6 @@ func is_stream_active() -> bool:
 
 func reset_session() -> void:
 	_slash_queue.clear()
-	_has_torso_yaw = false
 	_has_hands = false
 	_has_preview = false
 	_left_hand_offset = Vector2.ZERO
@@ -97,9 +86,6 @@ func _parse_packet(raw: String) -> void:
 			_left_hand_offset = Vector2(float(data.get("lx", 0.0)), float(data.get("ly", 0.0)))
 			_right_hand_offset = Vector2(float(data.get("rx", 0.0)), float(data.get("ry", 0.0)))
 			_has_hands = true
-			if data.has("deg"):
-				_latest_torso_yaw = float(data["deg"])
-				_has_torso_yaw = true
 		"preview":
 			var encoded: String = str(data.get("jpg", ""))
 			if encoded.is_empty():
@@ -109,9 +95,5 @@ func _parse_packet(raw: String) -> void:
 			if image.load_jpg_from_buffer(bytes) == OK:
 				_preview_texture.set_image(image)
 				_has_preview = true
-		"yaw":
-			if data.has("deg"):
-				_latest_torso_yaw = float(data["deg"])
-				_has_torso_yaw = true
 		"ping":
 			pass
