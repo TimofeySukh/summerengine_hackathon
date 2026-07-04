@@ -1,10 +1,10 @@
-[gd_scene load_steps=4 format=3 uid="uid://c8mainmenu001"]
+[gd_scene format=3 uid="uid://c8mainmenu001"]
 
-[ext_resource type="Script" path="res://ui/main_menu.gd" id="1_main"]
+[ext_resource type="Script" uid="uid://brcim1mosdaln" path="res://ui/main_menu.gd" id="1_main"]
 [ext_resource type="FontFile" uid="uid://ch2aef1jex81f" path="res://demo_page/fonts/Montserrat-Bold.ttf" id="2_font_bold"]
 [ext_resource type="FontFile" uid="uid://t50djx4didf7" path="res://demo_page/fonts/Montserrat-Medium.ttf" id="3_font_medium"]
 
-[node name="MainMenu" type="Control"]
+[node name="MainMenu" type="Control" unique_id=816205677]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -13,7 +13,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_main")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" type="ColorRect" parent="." unique_id=1989814172]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -22,7 +22,7 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.045, 0.07, 0.12, 1)
 
-[node name="AccentTop" type="ColorRect" parent="."]
+[node name="AccentTop" type="ColorRect" parent="." unique_id=828329045]
 layout_mode = 0
 offset_left = -40.0
 offset_top = 120.0
@@ -31,7 +31,7 @@ offset_bottom = 124.0
 rotation = -0.08
 color = Color(1, 0.05, 0.02, 0.85)
 
-[node name="AccentBottom" type="ColorRect" parent="."]
+[node name="AccentBottom" type="ColorRect" parent="." unique_id=1383602734]
 layout_mode = 1
 anchors_preset = 3
 anchor_left = 1.0
@@ -47,7 +47,7 @@ grow_vertical = 0
 rotation = -0.06
 color = Color(0, 0.35, 1, 0.75)
 
-[node name="CenterContainer" type="CenterContainer" parent="."]
+[node name="CenterContainer" type="CenterContainer" parent="." unique_id=1504248722]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -55,19 +55,19 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="MarginContainer" type="MarginContainer" parent="CenterContainer"]
+[node name="MarginContainer" type="MarginContainer" parent="CenterContainer" unique_id=759519827]
 layout_mode = 2
 theme_override_constants/margin_left = 64
 theme_override_constants/margin_top = 64
 theme_override_constants/margin_right = 64
 theme_override_constants/margin_bottom = 64
 
-[node name="VBox" type="VBoxContainer" parent="CenterContainer/MarginContainer"]
+[node name="VBox" type="VBoxContainer" parent="CenterContainer/MarginContainer" unique_id=1411890590]
 layout_mode = 2
 theme_override_constants/separation = 32
 alignment = 1
 
-[node name="Title" type="Label" parent="CenterContainer/MarginContainer/VBox"]
+[node name="Title" type="Label" parent="CenterContainer/MarginContainer/VBox" unique_id=880074307]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.92, 0.94, 0.98, 1)
 theme_override_fonts/font = ExtResource("2_font_bold")
@@ -75,7 +75,7 @@ theme_override_font_sizes/font_size = 72
 text = "HEAT WAVE"
 horizontal_alignment = 1
 
-[node name="Subtitle" type="Label" parent="CenterContainer/MarginContainer/VBox"]
+[node name="Subtitle" type="Label" parent="CenterContainer/MarginContainer/VBox" unique_id=157153241]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.55, 0.65, 0.82, 1)
 theme_override_fonts/font = ExtResource("3_font_medium")
@@ -83,11 +83,11 @@ theme_override_font_sizes/font_size = 22
 text = "Survive the night-city arena"
 horizontal_alignment = 1
 
-[node name="Spacer" type="Control" parent="CenterContainer/MarginContainer/VBox"]
+[node name="Spacer" type="Control" parent="CenterContainer/MarginContainer/VBox" unique_id=1151066295]
 custom_minimum_size = Vector2(0, 24)
 layout_mode = 2
 
-[node name="PlayButton" type="Button" parent="CenterContainer/MarginContainer/VBox"]
+[node name="PlayButton" type="Button" parent="CenterContainer/MarginContainer/VBox" unique_id=1980707259]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(320, 56)
 layout_mode = 2
@@ -97,7 +97,7 @@ theme_override_fonts/font = ExtResource("2_font_bold")
 theme_override_font_sizes/font_size = 28
 text = "Play"
 
-[node name="QuitButton" type="Button" parent="CenterContainer/MarginContainer/VBox"]
+[node name="QuitButton" type="Button" parent="CenterContainer/MarginContainer/VBox" unique_id=657250045]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(320, 56)
 layout_mode = 2

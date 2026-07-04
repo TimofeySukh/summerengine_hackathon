@@ -4,6 +4,7 @@ exports/
 bin/
 
 .env
+*.bak
 
 # Summer Engine local-only state
 .summer/local/
