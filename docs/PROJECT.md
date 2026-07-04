@@ -18,13 +18,13 @@ Surveillance katana survival in a flat night-city arena. **Final game:** securit
 
 | Phase | View | Camera control | Combat |
 |-------|------|----------------|--------|
-| **Final target** | CCTV feed(s) | **Manual pan/rotate** — no auto-aim, no auto tracking | One button — katana slash |
+| **Final target** | Single rotatable CCTV feed | **Manual pan/rotate** — no auto-aim, no auto tracking | One button — katana slash |
 | **Prototype now** | First-person (placeholder) | Mouse look *(maps to future camera rotate)* | Left mouse slash |
 | **Prototype (remove later)** | — | WASD + jump = temp body movement | — |
 
-Do **not** build the camera system until open questions in the spec are settled. Do **not** add auto-aim or auto camera switch. Do **not** polish FPS locomotion.
+Do **not** build the camera system until open questions in the spec are settled. Do **not** add auto-aim, auto camera switch, or multi-feed UI. Do **not** polish FPS locomotion.
 
-**Approved:** manual camera rotation + one slash button. **Rejected:** auto-aim, auto feed selection, threat-based camera tracking.
+**Approved:** one rotatable camera + manual rotate + one slash button. **Rejected:** auto-aim, auto tracking, multiple camera posts (v1).
 
 Full spec: `docs/superpowers/specs/2026-07-04-surveillance-camera-design.md`
 
@@ -114,3 +114,4 @@ Do not create assets from scratch (placeholder boxes, procedural meshes, etc.). 
 - Added a free procedural katana slash arc and reused the existing smoke puff for chaser death VFX.
 - **Design pivot:** documented surveillance-only final gameplay (manual camera rotate, one-button slash, no auto-aim). WASD prototype is temporary. Spec: `docs/superpowers/specs/2026-07-04-surveillance-camera-design.md`.
 - **Design decision:** rejected auto-aim and auto camera tracking; mouse look in prototype maps to future camera pan.
+- **Design decision:** v1 uses **one rotatable security camera** — no multi-post feed switching.

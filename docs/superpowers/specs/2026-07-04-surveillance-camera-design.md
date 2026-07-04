@@ -11,7 +11,7 @@ The current WASD + mouse prototype is a **temporary stand-in**. Mouse look maps 
 
 ## Fantasy
 
-You are at an operator desk in a neon night-city arena. Hostile humanoids move through the coverage of wall-mounted cameras. You **sweep the lens yourself**, find the target in frame, and slash through the feed. Missing a window costs health. Nothing aims for you.
+You are at an operator desk in a neon night-city arena. Hostile humanoids cross the view of **one** rotatable security camera. You **sweep the lens yourself**, find the target in frame, and slash through the feed. Missing a window costs health. Nothing aims for you.
 
 ## Approved Control Model
 
@@ -29,9 +29,10 @@ You are at an operator desk in a neon night-city arena. Hostile humanoids move t
 
 ### Player skill
 
-1. Rotate the camera to bring an enemy into the slash zone  
+1. Rotate the **single** arena camera to bring an enemy into the slash zone  
 2. Time the slash when the target is in frame  
-3. (Optional later) Manually switch to another camera post — still **player-chosen**, never automatic
+
+There is **one** security camera mount for the slice — no multi-post switching in v1.
 
 ## Prototype Mapping (Now)
 
@@ -50,16 +51,15 @@ Until real CCTV nodes ship, keyboard/mouse **simulate** the final model:
 
 When cameras are built:
 
-- Each security camera is a **fixed mount** with a limited rotation arc (typical PTZ — pan-tilt-zoom, here pan/tilt only unless zoom is added later)
-- Slash hit detection runs in **active feed space** (ray or volume from camera forward axis / screen center)
+- **One** wall/ceiling-mounted security camera with a limited rotation arc (PTZ pan/tilt; zoom optional later)
+- Player view is always that single feed — no monitor wall or feed switching in v1
+- Slash hit detection runs in **feed space** (ray or volume from camera forward axis / screen center)
 - Slash only hits what the player actually framed — skill = aim + timing
-- Optional: multiple fixed camera **posts** around the arena; player manually switches feed (e.g. number keys or UI click) — **not** auto-selected
 
 ## Open Questions
 
-1. **One rotatable camera** vs **several posts** the player switches between manually?
-2. Slash zone: full frame, center band, or crosshair-only?
-3. Katana on HUD overlay vs slash VFX only on the feed?
+1. Slash zone: full frame, center band, or crosshair-only?
+2. Katana on HUD overlay vs slash VFX only on the feed?
 
 ## Out of Scope (This Spec)
 
