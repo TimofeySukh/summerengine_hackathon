@@ -95,3 +95,4 @@ Do not create assets from scratch (placeholder boxes, procedural meshes, etc.). 
 - **Reverted surveillance slice** back to first-person WASD + mouse look per user request.
 - Reworked katana attack from rotation swing to straight forward thrust with linear trail VFX.
 - Moved the first-person katana viewmodel to the right side of the camera frame.
+- Tuned the katana viewmodel back toward center after the far-right placement overshot.
