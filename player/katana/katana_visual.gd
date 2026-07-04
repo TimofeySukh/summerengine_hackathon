@@ -1,11 +1,10 @@
 extends Node3D
 
 const SLASH_DURATION := 0.32
-const IDLE_POSITION := Vector3(0.62, -0.22, -0.52)
-const IDLE_EULER := Vector3(0.06, 0.10, -0.18)
+const IDLE_POSITION := Vector3(0.14, -0.22, -0.52)
+const IDLE_EULER := Vector3(0.0, 0.08, 0.0)
 
-const BLADE_TIP_PIVOT := Vector3(-0.05, 0.0, -0.08)
-const BLADE_HILT_PIVOT := Vector3(-0.27, 0.0, -0.08)
+const REST_TIP_DIR := Vector3(0.0, 0.0, -1.0)
 const CHAMBER_TIP_RAW := Vector3(-0.34, 0.44, -0.83)
 const CUT_TIP_RAW := Vector3(0.34, -0.44, -0.83)
 
@@ -20,19 +19,14 @@ var _chamber_angle: float
 var _cut_angle: float
 var _chamber_tip_dir: Vector3
 var _cut_tip_dir: Vector3
-var _rest_tip_dir: Vector3
 
 
 func _ready() -> void:
 	_chamber_tip_dir = CHAMBER_TIP_RAW.normalized()
 	_cut_tip_dir = CUT_TIP_RAW.normalized()
 	_slash_axis = _chamber_tip_dir.cross(_cut_tip_dir).normalized()
-
-	var idle_basis := Basis.from_euler(IDLE_EULER)
-	_rest_tip_dir = _blade_direction(idle_basis)
-
-	_chamber_angle = _rest_tip_dir.signed_angle_to(_chamber_tip_dir, _slash_axis)
-	_cut_angle = _rest_tip_dir.signed_angle_to(_cut_tip_dir, _slash_axis)
+	_chamber_angle = REST_TIP_DIR.signed_angle_to(_chamber_tip_dir, _slash_axis)
+	_cut_angle = REST_TIP_DIR.signed_angle_to(_cut_tip_dir, _slash_axis)
 	reset_pose()
 	_boost_materials(_slash_pivot)
 
@@ -74,12 +68,6 @@ func _apply_slash_progress(progress: float) -> void:
 func _apply_slash_angle(angle: float) -> void:
 	var idle_basis := Basis.from_euler(IDLE_EULER)
 	_slash_pivot.basis = Basis(_slash_axis, angle) * idle_basis
-
-
-func _blade_direction(basis: Basis) -> Vector3:
-	var tip := basis * BLADE_TIP_PIVOT
-	var hilt := basis * BLADE_HILT_PIVOT
-	return (tip - hilt).normalized()
 
 
 func _boost_materials(node: Node) -> void:
