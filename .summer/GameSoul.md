@@ -10,16 +10,14 @@ You do not run the streets. You sit at one monitor, **turn a single security cam
 - **Camera:** player manually pans/rotates that mount — no auto-tracking, no other feeds in v1.
 - **Movement:** none — operator stays at the desk.
 - **Combat:** slash only what you framed in the feed.
-- **Rejected:** auto-aim, threat-based camera switching, multi-camera posts, body WASD movement.
-- **Proposed (future):** mic **"move"** — camera moves forward along its sweep arc; **"stop"** — freeze; slash still on button.
+- **Voice (TBD):** mic **"move"** / **"stop"** for camera jog — M/N keys stand in for now.
 
-## Current Prototype (Temporary)
+## Current Build
 
-- Mouse look → stand-in for camera rotate (keep this mapping).
-- Left mouse → katana slash (keep).
-- WASD + jump → temporary body movement, remove when CCTV ships.
+- `SurveillanceMount` CCTV feed — mouse pan, M/N jog, LMB slash
+- Static operator at arena center; chasers walk in and take contact damage
 - Design spec: `docs/superpowers/specs/2026-07-04-surveillance-camera-design.md`
 
 ## Open Decision
 
-Slash zone shape and katana HUD vs feed-only VFX (see spec).
+Slash zone shape; real mic keyword spotting vs keyboard jog only.

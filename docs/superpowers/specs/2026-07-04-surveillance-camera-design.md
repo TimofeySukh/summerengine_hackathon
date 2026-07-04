@@ -1,13 +1,22 @@
 # Surveillance Camera Gameplay — Design Spec
 
-> Status: **Approved direction — manual camera control, no auto-aim**  
+> Status: **Implemented (v1 slice)** — mic keywords still pending  
 > Date: 2026-07-04 (updated same day)
 
 ## Summary
 
 Heat Wave is pivoting from free first-person movement to **surveillance-only play**. The player watches the arena through security cameras, **manually pans/rotates** the active feed, and cuts enemies with a katana — **one slash button**, **no auto-aim**, **no auto camera tracking**.
 
-The current WASD + mouse prototype is a **temporary stand-in**. Mouse look maps to future **camera rotation**; body movement will be removed. Do not invest in polishing FPS locomotion.
+The current keyboard/mouse build **implements** the surveillance model. WASD body movement is removed.
+
+| Input | Action |
+|-------|--------|
+| **Mouse** | Pan / rotate `SurveillanceMount` |
+| **Left mouse** | Katana slash from `FeedCamera` ray |
+| **M** | Jog camera forward along pan arc *(voice "move" stand-in)* |
+| **N** | Stop jog *(voice "stop" stand-in)* |
+
+**Rule for agents:** do not add auto-aim, auto camera tracking, or body locomotion back without explicit request.
 
 ## Fantasy
 
@@ -38,7 +47,7 @@ Optional **microphone** binds for hands-busy operator fantasy. Not required for 
 - Implementation likely uses simple **keyword detection** (keyword spotting — only `"move"` / `"stop"`, not full speech-to-text) with debounce so noise does not spam commands.
 - Requires mic permission UX and a mute/off toggle.
 
-**Rule for agents:** do not implement mic input until CCTV camera pan exists. Document only until user asks to build it.
+**Rule for agents:** wire real mic keyword spotting when requested; M/N keyboard jog is the current stand-in.
 
 ### Explicitly rejected
 
@@ -53,38 +62,23 @@ Optional **microphone** binds for hands-busy operator fantasy. Not required for 
 
 There is **one** security camera mount for the slice — no multi-post switching in v1.
 
-## Prototype Mapping (Now)
+## Implementation (v1)
 
-Until real CCTV nodes ship, keyboard/mouse **simulate** the final model:
-
-| Prototype input | Stands in for (final) |
-|-----------------|------------------------|
-| **Mouse look** | Camera pan / rotate on mount |
-| **Left mouse** | Katana slash |
-| WASD | Temporary body movement — **will be removed** |
-| Space jump | Temporary — **will be removed** |
-
-**Rule for agents:** do not implement surveillance cameras yet. Do not add auto-aim or auto camera switch logic. Keep WASD until camera scenes replace body movement.
-
-## Camera Implementation Notes (Future — No Code Yet)
-
-When cameras are built:
-
-- **One** wall/ceiling-mounted security camera with a limited rotation arc (PTZ pan/tilt; zoom optional later)
-- Player view is always that single feed — no monitor wall or feed switching in v1
-- Slash hit detection runs in **feed space** (ray or volume from camera forward axis / screen center)
-- Slash only hits what the player actually framed — skill = aim + timing
+- `SurveillanceMount` in `player/player.tscn` — fixed elevated position, yaw/pitch limits
+- `player/camera_controller.gd` — mouse pan + jog forward/stop
+- `player/voice_jog_listener.gd` — M/N triggers jog (mic keywords TBD)
+- `player/player.gd` — static operator, slash from camera ray
 
 ## Open Questions
 
 1. Slash zone: full frame, center band, or crosshair-only?
 2. Katana on HUD overlay vs slash VFX only on the feed?
+3. Real microphone keyword spotting provider / UX
 
-## Out of Scope (This Spec)
+## Out of Scope
 
-- Camera implementation code
-- Removing WASD / retargeting input map
 - Auto-aim or threat-based camera systems
+- Multi-camera feed switching
 
 ## Superseded Variants
 

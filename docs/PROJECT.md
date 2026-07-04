@@ -4,9 +4,9 @@
 
 ## Overview
 
-Surveillance katana survival in a flat night-city arena. **Final game:** security camera feeds only — player **manually rotates** the camera, **no auto-aim**, one slash button. No body movement in shipping design.
+Surveillance katana survival in a flat night-city arena. **Final game:** one rotatable CCTV feed, manual pan, one slash button, no auto-aim. The operator body does not move.
 
-**Current prototype:** mouse look = future camera pan; WASD = temporary placeholder to remove later.
+**Playable now:** fixed surveillance mount overlooking the arena; mouse pans, LMB slashes, M/N jog the camera forward/stop (voice stand-in).
 
 - **Engine:** Summer Engine (Godot 4.6)
 - **Main scene:** `main.tscn`
@@ -18,13 +18,8 @@ Surveillance katana survival in a flat night-city arena. **Final game:** securit
 
 | Phase | View | Camera control | Combat |
 |-------|------|----------------|--------|
-| **Final target** | Single rotatable CCTV feed | **Manual pan/rotate** — no auto-aim, no auto tracking | One button — katana slash |
-| **Prototype now** | First-person (placeholder) | Mouse look *(maps to future camera rotate)* | Left mouse slash |
-| **Prototype (remove later)** | — | WASD + jump = temp body movement | — |
-
-Do **not** build the camera system until open questions in the spec are settled. Do **not** add auto-aim, auto camera switch, or multi-feed UI. Do **not** polish FPS locomotion.
-
-**Approved:** one rotatable camera + manual rotate + one slash button. **Rejected:** auto-aim, auto tracking, multiple camera posts (v1).
+| **Shipped slice** | Single CCTV feed (`SurveillanceMount`) | Mouse pan + M/N jog forward/stop | LMB slash |
+| **Removed** | FPS body camera | WASD, jump | — |
 
 Full spec: `docs/superpowers/specs/2026-07-04-surveillance-camera-design.md`
 
@@ -34,37 +29,26 @@ Do not create assets from scratch (placeholder boxes, procedural meshes, etc.). 
 
 ## Controls
 
-### Prototype (temporary — not final)
-
 | Input | Action |
 |-------|--------|
-| **Mouse** | Look *(placeholder for **camera pan/rotate**)* |
-| **Left mouse** | Katana slash |
-| WASD | Move *(placeholder — will be removed)* |
-| Space | Jump *(placeholder — will be removed)* |
+| **Mouse** | Pan / rotate surveillance camera |
+| **Left mouse** | Katana slash (camera ray, no auto-aim) |
+| **M** | Jog camera forward along pan arc *(voice "move" stand-in)* |
+| **N** | Stop camera jog *(voice "stop" stand-in)* |
 | Esc | Pause |
 
-### Final target
-
-| Input | Action |
-|-------|--------|
-| **Pan / rotate** | Manual camera turn on fixed mount (no auto-aim) |
-| **One button** (LMB / Space) | Katana slash in framed view |
-| **Microphone** *(proposed)* | **"move"** — camera pans forward along its arc; **"stop"** — halt |
-| Body movement | None |
-| Auto camera / auto aim | **Not allowed** |
+No WASD body movement. No auto-aim or auto camera tracking.
 
 ## Current State
 
-### Player
+### Operator / camera
 
-- First-person camera at head height (`player/camera_controller.gd`)
-- WASD movement, jump, mouse look (`player/player.gd`)
-- CC BY 3.0 low-poly katana model (`player/katana/katana.glb`, dook blocks katana via Poly Pizza)
-- Katana viewmodel parented to `PlayerCamera` (local offset, no per-frame global sync).
-- Procedural blue-white slash arc appears during fast katana swings (`player/katana/katana_visual.gd`)
-- Melee attack via `Attack` animation and `MeleeAttackArea` hit volume (`player/melee_attack_area.gd`)
-- Character model hidden; katana visible in first person
+- Static operator at arena center (`player/player.gd` — no locomotion)
+- Single rotatable CCTV mount (`SurveillanceMount`, `player/camera_controller.gd`)
+- Feed camera with katana viewmodel and slash ray (`FeedCamera`, `player/katana/`)
+- Voice jog bridge: `player/voice_jog_listener.gd` (M/N now; mic keywords later)
+- CC BY 3.0 katana model; procedural slash arc on swing (`player/katana/katana_visual.gd`)
+- Slash hits via camera ray + tight shape query — no magnet hitboxes
 
 ### Enemies
 
@@ -88,12 +72,9 @@ Do not create assets from scratch (placeholder boxes, procedural meshes, etc.). 
 | Path | Role |
 |------|------|
 | `main.tscn` | Playable level and enemy placement |
-| `player/player.gd` | Movement, attack, damage |
-| `player/katana/katana.glb` | Katana 3D model (CC BY 3.0, dook via Poly Pizza) |
-| `player/katana/katana_visual.tscn` | Katana scale, orientation, and material tuning for FPS |
-| `player/player.tscn` | Player scene, katana mount, melee hitbox |
-| `player/camera_controller.gd` | First-person camera |
-| `player/melee_attack_area.gd` | Melee damage detection |
+| `player/player.gd` | Operator health, slash, static body |
+| `player/camera_controller.gd` | PTZ surveillance mount (pan + jog) |
+| `player/voice_jog_listener.gd` | M/N jog bridge for future mic commands |
 | `enemies/humanoid_chaser.gd` | Chaser movement, contact damage, and death VFX |
 | `enemies/enemy_spawner.gd` | Timed enemy spawning around the player |
 
@@ -117,3 +98,4 @@ Do not create assets from scratch (placeholder boxes, procedural meshes, etc.). 
 - **Design decision:** rejected auto-aim and auto camera tracking; mouse look in prototype maps to future camera pan.
 - **Design decision:** v1 uses **one rotatable security camera** — no multi-post feed switching.
 - **Proposed:** microphone **"move"** / **"stop"** — camera jogs forward along its pan path, then stops (slash stays on button).
+- **Implemented surveillance slice:** removed WASD/jump locomotion; single `SurveillanceMount` CCTV feed; mouse pan, M/N jog, LMB slash from camera ray.

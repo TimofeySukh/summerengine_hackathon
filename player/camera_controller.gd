@@ -1,101 +1,76 @@
 class_name CameraController extends Node3D
 
-enum CAMERA_PIVOT { OVER_SHOULDER, THIRD_PERSON }
-
 @export var invert_mouse_y := false
-@export_range(0.0, 1.0) var mouse_sensitivity := 0.25
-@export_range(0.0, 8.0) var joystick_sensitivity := 2.0
-@export var tilt_upper_limit := deg_to_rad(-60.0)
-@export var tilt_lower_limit := deg_to_rad(60.0)
+@export_range(0.0005, 0.01, 0.0005) var mouse_sensitivity := 0.0025
+@export var jog_pan_speed := 0.42
+@export var yaw_min := -1.35
+@export var yaw_max := 1.35
+@export var pitch_min := -0.55
+@export var pitch_max := 0.35
 
-@onready var camera: Camera3D = $PlayerCamera
-@onready var _over_shoulder_pivot: Node3D = $CameraOverShoulderPivot
-@onready var _camera_spring_arm: SpringArm3D = $CameraSpringArm
-@onready var _third_person_pivot: Node3D = $CameraSpringArm/CameraThirdPersonPivot
-@onready var _camera_raycast: RayCast3D = $PlayerCamera/CameraRayCast
+@onready var camera: Camera3D = $FeedCamera
+@onready var _slash_raycast: RayCast3D = $FeedCamera/SlashRayCast
 
-var _aim_target: Vector3
-var _aim_collider: Node
-var _pivot: Node3D
-var _current_pivot_type: CAMERA_PIVOT
-var _rotation_input: float
-var _tilt_input: float
-var _mouse_input := false
-var _offset: Vector3
-var _anchor: CharacterBody3D
-var _euler_rotation: Vector3
+var _pan_yaw := 0.0
+var _pan_pitch := 0.0
+var _mouse_delta := Vector2.ZERO
+var _jog_forward := false
+
+
+func initialize() -> void:
+	_pan_yaw = rotation.y
+	_pan_pitch = rotation.x
+	_apply_rotation()
+
 
 func _unhandled_input(event: InputEvent) -> void:
-	_mouse_input = event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED
-	if _mouse_input:
-		_rotation_input = -event.relative.x * mouse_sensitivity
-		_tilt_input = -event.relative.y * mouse_sensitivity
+	if event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
+		_mouse_delta.x -= event.relative.x * mouse_sensitivity
+		_mouse_delta.y -= event.relative.y * mouse_sensitivity
 
 
 func _process(delta: float) -> void:
-	if not _anchor:
-		return
-
-	_rotation_input += Input.get_action_raw_strength("camera_left") - Input.get_action_raw_strength("camera_right")
-	_tilt_input += Input.get_action_raw_strength("camera_up") - Input.get_action_raw_strength("camera_down")
-
+	_pan_yaw += _mouse_delta.x
+	var tilt_delta := _mouse_delta.y
 	if invert_mouse_y:
-		_tilt_input *= -1
+		tilt_delta = -tilt_delta
+	_pan_pitch += tilt_delta
 
-	if _camera_raycast.is_colliding():
-		_aim_target = _camera_raycast.get_collision_point()
-		_aim_collider = _camera_raycast.get_collider()
-	else:
-		_aim_target = _camera_raycast.global_transform * _camera_raycast.target_position
-		_aim_collider = null
+	if _jog_forward:
+		_pan_yaw += jog_pan_speed * delta
 
-	# First-person camera follows the character directly, including jumps.
-	global_position = _anchor.global_position + _offset
+	_pan_yaw = clampf(_pan_yaw, yaw_min, yaw_max)
+	_pan_pitch = clampf(_pan_pitch, pitch_min, pitch_max)
+	_apply_rotation()
 
-	# Rotates camera using euler rotation
-	_euler_rotation.x += _tilt_input * delta
-	_euler_rotation.x = clamp(_euler_rotation.x, tilt_lower_limit, tilt_upper_limit)
-	_euler_rotation.y += _rotation_input * delta
-
-	transform.basis = Basis.from_euler(_euler_rotation)
-
-	camera.global_transform = _pivot.global_transform
-	camera.rotation.z = 0
-
-	_rotation_input = 0.0
-	_tilt_input = 0.0
+	_mouse_delta = Vector2.ZERO
 
 
-func setup(anchor: CharacterBody3D) -> void:
-	_anchor = anchor
-	global_transform = _anchor.global_transform
-	_offset = global_transform.origin - anchor.global_transform.origin
-	set_pivot(CAMERA_PIVOT.THIRD_PERSON)
-	camera.global_transform = camera.global_transform.interpolate_with(_pivot.global_transform, 0.1)
-	_camera_spring_arm.add_excluded_object(_anchor.get_rid())
-	_camera_raycast.add_exception_rid(_anchor.get_rid())
+func start_jog_forward() -> void:
+	_jog_forward = true
 
 
-func set_pivot(pivot_type: CAMERA_PIVOT) -> void:
-	if pivot_type == _current_pivot_type:
-		return
-
-	match (pivot_type):
-		CAMERA_PIVOT.OVER_SHOULDER:
-			_over_shoulder_pivot.look_at(_aim_target)
-			_pivot = _over_shoulder_pivot
-		CAMERA_PIVOT.THIRD_PERSON:
-			_pivot = _third_person_pivot
-
-	_current_pivot_type = pivot_type
+func stop_jog() -> void:
+	_jog_forward = false
 
 
 func get_aim_target() -> Vector3:
-	return _aim_target
+	if _slash_raycast.is_colliding():
+		return _slash_raycast.get_collision_point()
+	return _slash_raycast.global_transform * _slash_raycast.target_position
 
 
 func get_aim_collider() -> Node:
-	if is_instance_valid(_aim_collider):
-		return _aim_collider
-	else:
-		return null
+	if _slash_raycast.is_colliding():
+		return _slash_raycast.get_collider()
+	return null
+
+
+func get_slash_ray() -> Dictionary:
+	var origin := camera.global_position
+	var direction := -(camera.global_transform.basis.z).normalized()
+	return {"origin": origin, "direction": direction}
+
+
+func _apply_rotation() -> void:
+	rotation = Vector3(_pan_pitch, _pan_yaw, 0.0)

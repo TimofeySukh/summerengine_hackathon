@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3 uid="uid://ciqrpd5675boy"]
+[gd_scene load_steps=16 format=3 uid="uid://ciqrpd5675boy"]
 
 [ext_resource type="Script" uid="uid://gofa4kyvcacj" path="res://player/player.gd" id="1_rvo1c"]
 [ext_resource type="PackedScene" uid="uid://b2ew46dlu7u7x" path="res://player/grenade_launcher.tscn" id="3_54qc4"]
@@ -6,6 +6,7 @@
 [ext_resource type="Script" uid="uid://0nwful4fsrh8" path="res://player/melee_attack_area.gd" id="3_v1vve"]
 [ext_resource type="PackedScene" uid="uid://c0mo8tek77du4" path="res://player/character_skin.tscn" id="4_ign62"]
 [ext_resource type="PackedScene" uid="uid://c8katana1visual" path="res://player/katana/katana_visual.tscn" id="5_katana"]
+[ext_resource type="Script" path="res://player/voice_jog_listener.gd" id="6_voice"]
 [ext_resource type="AudioStream" uid="uid://bx0t7f2nuk2lr" path="res://player/sounds/03_step_grass_03.wav" id="10_wx4h4"]
 [ext_resource type="AudioStream" uid="uid://cbcb2d63weegs" path="res://player/sounds/45_landing_01.wav" id="11_3s4i7"]
 
@@ -27,7 +28,7 @@ length = 0.3
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
-tracks/0/path = NodePath("../CameraController/PlayerCamera/KatanaVisual:rotation")
+tracks/0/path = NodePath("../SurveillanceMount/FeedCamera/KatanaVisual:rotation")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
@@ -71,7 +72,7 @@ length = 0.001
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
-tracks/0/path = NodePath("../CameraController/PlayerCamera/KatanaVisual:rotation")
+tracks/0/path = NodePath("../SurveillanceMount/FeedCamera/KatanaVisual:rotation")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
@@ -108,47 +109,39 @@ axis_lock_angular_x = true
 axis_lock_angular_y = true
 axis_lock_angular_z = true
 script = ExtResource("1_rvo1c")
-bullet_speed = 14.0
-acceleration = 6.0
 
 [node name="CharacterCollisionShape" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
 shape = SubResource("CapsuleShape3D_8x2xm")
 
-[node name="CameraController" type="Node3D" parent="."]
-top_level = true
+[node name="SurveillanceMount" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.874, 0.486, 0, -0.486, 0.874, 0, 7.5, 13)
 script = ExtResource("3_qrkly")
 invert_mouse_y = false
-tilt_upper_limit = 1.25
-tilt_lower_limit = -1.25
+jog_pan_speed = 0.42
+yaw_min = -1.35
+yaw_max = 1.35
+pitch_min = -0.55
+pitch_max = 0.35
 
-[node name="CameraOverShoulderPivot" type="Marker3D" parent="CameraController"]
-transform = Transform3D(-0.994522, 0.0400013, -0.0965717, 0, 0.92388, 0.382683, 0.104528, 0.380587, -0.918818, -0.848491, 3.48765, -2.32639)
-
-[node name="CameraSpringArm" type="SpringArm3D" parent="CameraController"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.65, 0)
-shape = SubResource("SeparationRayShape3D_gqx4v")
-spring_length = 0.01
-
-[node name="CameraThirdPersonPivot" type="Marker3D" parent="CameraController/CameraSpringArm"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
-
-[node name="PlayerCamera" type="Camera3D" parent="CameraController"]
-transform = Transform3D(-1, -3.71248e-14, -8.74228e-08, -3.23484e-08, 0.929023, 0.370022, 8.12178e-08, 0.370022, -0.929023, -8.74228e-07, 6.04006, -9.29023)
-top_level = true
+[node name="FeedCamera" type="Camera3D" parent="SurveillanceMount"]
 attributes = SubResource("CameraAttributesPractical_2ooex")
-fov = 50.0
-near = 0.01
+fov = 52.0
+near = 0.05
+current = true
 
-[node name="CameraRayCast" type="RayCast3D" parent="CameraController/PlayerCamera"]
-transform = Transform3D(1, 0, -7.10543e-15, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+[node name="SlashRayCast" type="RayCast3D" parent="SurveillanceMount/FeedCamera"]
 target_position = Vector3(0, 0, -100)
-debug_shape_custom_color = Color(0, 0, 0, 0)
+hit_from_inside = true
 
-[node name="KatanaVisual" parent="CameraController/PlayerCamera" instance=ExtResource("5_katana")]
+[node name="KatanaVisual" parent="SurveillanceMount/FeedCamera" instance=ExtResource("5_katana")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.14, -0.22, -0.52)
 
+[node name="VoiceJogListener" type="Node" parent="."]
+script = ExtResource("6_voice")
+
 [node name="GrenadeLauncher" parent="." instance=ExtResource("3_54qc4")]
+visible = false
 
 [node name="GroundShapeCast" type="ShapeCast3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
@@ -221,6 +214,16 @@ offset_bottom = 58.0
 mouse_filter = 2
 value = 100.0
 show_percentage = false
+
+[node name="ControlHint" type="Label" parent="PlayerUI"]
+layout_mode = 0
+offset_left = 36.0
+offset_top = 66.0
+offset_right = 720.0
+offset_bottom = 96.0
+theme_override_colors/font_color = Color(0.72, 0.78, 0.88, 0.85)
+theme_override_font_sizes/font_size = 16
+text = "Mouse: pan camera  |  LMB: slash  |  M: move cam  |  N: stop"
 
 [node name="StepSound" type="AudioStreamPlayer3D" parent="."]
 stream = ExtResource("10_wx4h4")
