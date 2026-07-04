@@ -1,13 +1,37 @@
 extends Node3D
 
-const IDLE_POSITION := Vector3(0.14, -0.22, -0.52)
-const IDLE_PIVOT_ROTATION := Vector3(0.06, 0.1, -0.18)
-const CHAMBER_PIVOT_ROTATION := Vector3(-0.1, 0.04, 0.68)
-const CUT_PIVOT_ROTATION := Vector3(0.06, 0.14, -0.95)
+const SLASH_DURATION := 0.52
 
-const SLASH_ARC_DURATION := 0.42
-const CHAMBER_END_T := 0.12
-const CUT_END_T := 0.62
+const IDLE_POSITION := Vector3(0.14, -0.22, -0.52)
+const IDLE_ROTATION := Vector3(0.04, 0.12, -0.12)
+
+const SWING_KEYFRAMES := [
+	{
+		"time": 0.00,
+		"pos": IDLE_POSITION,
+		"rot": IDLE_ROTATION,
+	},
+	{
+		"time": 0.09,
+		"pos": Vector3(0.07, -0.08, -0.44),
+		"rot": Vector3(-0.48, 0.04, 0.62),
+	},
+	{
+		"time": 0.24,
+		"pos": Vector3(0.21, -0.31, -0.54),
+		"rot": Vector3(0.18, 0.14, -0.82),
+	},
+	{
+		"time": 0.33,
+		"pos": Vector3(0.23, -0.34, -0.56),
+		"rot": Vector3(0.24, 0.12, -0.98),
+	},
+	{
+		"time": SLASH_DURATION,
+		"pos": IDLE_POSITION,
+		"rot": IDLE_ROTATION,
+	},
+]
 
 @export var slash_color := Color(0.85, 0.95, 1.0, 0.72)
 
@@ -17,6 +41,7 @@ var _slash_trail: MeshInstance3D
 var _slash_material: StandardMaterial3D
 var _attack_tween: Tween
 var _vfx_tween: Tween
+var _trail_started := false
 
 
 func _ready() -> void:
@@ -30,37 +55,69 @@ func reset_pose() -> void:
 		_attack_tween.kill()
 	if _vfx_tween and _vfx_tween.is_valid():
 		_vfx_tween.kill()
-	position = IDLE_POSITION
-	_slash_pivot.rotation = IDLE_PIVOT_ROTATION
+	_apply_pose(SWING_KEYFRAMES[0])
 
 
 func play_slash() -> void:
 	if _attack_tween and _attack_tween.is_valid():
 		_attack_tween.kill()
-	position = IDLE_POSITION
 
-	_play_slash_trail()
+	_trail_started = false
 	_attack_tween = create_tween()
-	_attack_tween.tween_method(_apply_slash_arc, 0.0, 1.0, SLASH_ARC_DURATION)
+	_attack_tween.tween_method(_apply_swing, 0.0, SLASH_DURATION, SLASH_DURATION)
 
 
-func _apply_slash_arc(t: float) -> void:
-	if t <= CHAMBER_END_T:
-		var local_t := _smoothstep(t / CHAMBER_END_T)
-		_slash_pivot.rotation = IDLE_PIVOT_ROTATION.lerp(CHAMBER_PIVOT_ROTATION, local_t)
-	elif t <= CUT_END_T:
-		var span := CUT_END_T - CHAMBER_END_T
-		var local_t := _smoothstep((t - CHAMBER_END_T) / span)
-		_slash_pivot.rotation = CHAMBER_PIVOT_ROTATION.lerp(CUT_PIVOT_ROTATION, local_t)
-	else:
-		var span := 1.0 - CUT_END_T
-		var local_t := _smoothstep((t - CUT_END_T) / span)
-		_slash_pivot.rotation = CUT_PIVOT_ROTATION.lerp(IDLE_PIVOT_ROTATION, local_t)
+func _apply_swing(elapsed: float) -> void:
+	_sample_swing(elapsed)
+	if not _trail_started and elapsed >= 0.09:
+		_trail_started = true
+		_play_slash_trail()
 
 
-func _smoothstep(t: float) -> float:
+func _sample_swing(elapsed: float) -> void:
+	var clamped := clampf(elapsed, 0.0, SLASH_DURATION)
+
+	for index in range(SWING_KEYFRAMES.size() - 1):
+		var start_frame: Dictionary = SWING_KEYFRAMES[index]
+		var end_frame: Dictionary = SWING_KEYFRAMES[index + 1]
+		var end_time: float = end_frame["time"]
+
+		if clamped > end_time:
+			continue
+
+		var start_time: float = start_frame["time"]
+		var span := maxf(end_time - start_time, 0.0001)
+		var raw_t := (clamped - start_time) / span
+		_apply_pose_interpolated(start_frame, end_frame, _segment_ease(index, raw_t))
+		return
+
+	_apply_pose(SWING_KEYFRAMES[-1])
+
+
+func _segment_ease(segment_index: int, t: float) -> float:
 	var clamped := clampf(t, 0.0, 1.0)
-	return clamped * clamped * (3.0 - 2.0 * clamped)
+	match segment_index:
+		0:
+			return clamped * clamped * (3.0 - 2.0 * clamped)
+		1:
+			return pow(clamped, 0.72)
+		2:
+			return 1.0 - pow(1.0 - clamped, 2.0)
+		_:
+			return clamped * clamped * (3.0 - 2.0 * clamped)
+
+
+func _apply_pose(frame: Dictionary) -> void:
+	position = frame["pos"]
+	_slash_pivot.rotation = frame["rot"]
+
+
+func _apply_pose_interpolated(start_frame: Dictionary, end_frame: Dictionary, t: float) -> void:
+	position = start_frame["pos"].lerp(end_frame["pos"], t)
+
+	var start_quat := Quaternion.from_euler(start_frame["rot"])
+	var end_quat := Quaternion.from_euler(end_frame["rot"])
+	_slash_pivot.quaternion = start_quat.slerp(end_quat, t)
 
 
 func _play_slash_trail() -> void:
@@ -79,8 +136,8 @@ func _play_slash_trail() -> void:
 	fade_color.a = 0.0
 
 	_vfx_tween = create_tween().set_parallel(true)
-	_vfx_tween.tween_property(_slash_trail, "scale", Vector3(1.0, 1.0, 1.0), 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	_vfx_tween.tween_property(_slash_material, "albedo_color", fade_color, 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	_vfx_tween.tween_property(_slash_trail, "scale", Vector3(1.0, 1.0, 1.0), 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_vfx_tween.tween_property(_slash_material, "albedo_color", fade_color, 0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	_vfx_tween.chain().tween_callback(func() -> void: _slash_trail.visible = false)
 
 
