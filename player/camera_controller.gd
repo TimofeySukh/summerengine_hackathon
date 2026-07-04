@@ -9,7 +9,6 @@ enum CAMERA_PIVOT { OVER_SHOULDER, THIRD_PERSON }
 @export var tilt_lower_limit := deg_to_rad(60.0)
 
 @onready var camera: Camera3D = $PlayerCamera
-@onready var _katana_viewmodel: Node3D = $KatanaVisual
 @onready var _over_shoulder_pivot: Node3D = $CameraOverShoulderPivot
 @onready var _camera_spring_arm: SpringArm3D = $CameraSpringArm
 @onready var _third_person_pivot: Node3D = $CameraSpringArm/CameraThirdPersonPivot
@@ -25,9 +24,6 @@ var _mouse_input := false
 var _offset: Vector3
 var _anchor: CharacterBody3D
 var _euler_rotation: Vector3
-
-const KATANA_VIEW_OFFSET := Vector3(0.14, 0.45, -0.5)
-
 
 func _unhandled_input(event: InputEvent) -> void:
 	_mouse_input = event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED
@@ -65,12 +61,6 @@ func _process(delta: float) -> void:
 
 	camera.global_transform = _pivot.global_transform
 	camera.rotation.z = 0
-
-	if _katana_viewmodel:
-		_katana_viewmodel.global_transform = camera.global_transform * Transform3D(
-			Basis.from_euler(_katana_viewmodel.rotation),
-			KATANA_VIEW_OFFSET
-		)
 
 	_rotation_input = 0.0
 	_tilt_input = 0.0

@@ -4,7 +4,7 @@
 
 ## Overview
 
-First-person katana combat prototype in a stylized Japanese-inspired mountain grove. The player runs, jumps, looks around, and cuts down enemy bots with a katana.
+First-person katana combat prototype in a flat night-city arena inspired by cyberpunk Japan. The player runs, jumps, looks around, and cuts down humanoid chasers with a katana.
 
 - **Engine:** Summer Engine (Godot 4.6)
 - **Main scene:** `main.tscn`
@@ -31,22 +31,22 @@ Do not create assets from scratch (placeholder boxes, procedural meshes, etc.). 
 
 - First-person camera at head height (`player/camera_controller.gd`)
 - WASD movement, jump, mouse look (`player/player.gd`)
-- CC0 low-poly katana model on `MeleeAnchor` (`player/katana/katana.glb`, dook blocks katana via Poly Pizza)
-- Katana viewmodel synced to the FPS camera each frame (`CameraController/KatanaVisual`).
+- CC BY 3.0 low-poly katana model (`player/katana/katana.glb`, dook blocks katana via Poly Pizza)
+- Katana viewmodel parented to `PlayerCamera` (local offset, no per-frame global sync).
+- Procedural blue-white slash arc appears during fast katana swings (`player/katana/katana_visual.gd`)
 - Melee attack via `Attack` animation and `MeleeAttackArea` hit volume (`player/melee_attack_area.gd`)
 - Character model hidden; katana visible in first person
 
 ### Enemies
 
-- **Ground:** `beetle_bot` — chases player via navigation, damages on contact
-- **Flying:** `bee_bot` — tracks player and shoots projectiles
-- Spawned around the start area in `main.tscn` under `Foes`
+- **Humanoid chaser:** `enemies/humanoid_chaser.tscn` walks directly toward the player, damages on contact, and dies from katana hits
+- `enemies/enemy_spawner.gd` keeps pressure on the player by spawning chasers around the arena
+- Enemy death flashes red, collapses the body, and spawns the existing smoke puff VFX
 
 ### Level
 
-- Mountain terrain with navmesh, trees, grass, water, jumping pads
-- Destructible crates (`box/`)
-- Background music: `level/music/mountain.mp3`
+- Flat concrete arena with dark city blocks, neon panels, red/blue lights, fog, and lane-strip accents
+- Main level composition is authored directly in `main.tscn`
 
 ### Disabled / Legacy (from TPS template)
 
@@ -65,8 +65,8 @@ Do not create assets from scratch (placeholder boxes, procedural meshes, etc.). 
 | `player/player.tscn` | Player scene, katana mount, melee hitbox |
 | `player/camera_controller.gd` | First-person camera |
 | `player/melee_attack_area.gd` | Melee damage detection |
-| `enemies/beetle_bot.gd` | Ground enemy AI |
-| `enemies/bee_bot.gd` | Flying enemy AI |
+| `enemies/humanoid_chaser.gd` | Chaser movement, contact damage, and death VFX |
+| `enemies/enemy_spawner.gd` | Timed enemy spawning around the player |
 
 ## Changelog
 
@@ -81,3 +81,6 @@ Do not create assets from scratch (placeholder boxes, procedural meshes, etc.). 
 - Parented katana to the FPS camera so it stays visible in view.
 - Moved katana to the camera pivot with a forward offset; added `player/katana/PREVIEW.jpg` for asset preview.
 - Lowered and leveled the FPS katana viewmodel (blade horizontal, parented to camera at y=0.48).
+- Fixed katana jitter: removed per-frame global sync feedback loop; katana is a normal child of `PlayerCamera`.
+- Updated project docs to match the current night-city chaser slice.
+- Added a free procedural katana slash arc and reused the existing smoke puff for chaser death VFX.
