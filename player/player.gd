@@ -149,7 +149,6 @@ func attack() -> void:
 	_attack_animation_player.play("Attack")
 	_character_skin.punch()
 	_hit_with_katana()
-	velocity = _last_strong_direction * attack_impulse
 
 
 func shoot() -> void:

@@ -2,13 +2,12 @@ extends Node3D
 
 const IDLE_POSITION := Vector3(0.14, -0.22, -0.52)
 const IDLE_PIVOT_ROTATION := Vector3(0.06, 0.1, -0.18)
-const WIND_POSITION := Vector3(0.0, -0.02, -0.44)
-const WIND_PIVOT_ROTATION := Vector3(-0.02, 0.08, 0.78)
-const SLASH_POSITION := Vector3(0.3, -0.38, -0.55)
-const SLASH_PIVOT_ROTATION := Vector3(0.08, 0.1, -0.92)
-const WIND_DURATION := 0.09
-const SLASH_DURATION := 0.15
-const RECOVER_DURATION := 0.18
+const CHAMBER_PIVOT_ROTATION := Vector3(-0.1, 0.04, 0.68)
+const CUT_PIVOT_ROTATION := Vector3(0.06, 0.14, -0.95)
+
+const SLASH_ARC_DURATION := 0.42
+const CHAMBER_END_T := 0.12
+const CUT_END_T := 0.62
 
 @export var slash_color := Color(0.85, 0.95, 1.0, 0.72)
 
@@ -36,16 +35,32 @@ func reset_pose() -> void:
 
 
 func play_slash() -> void:
-	reset_pose()
+	if _attack_tween and _attack_tween.is_valid():
+		_attack_tween.kill()
+	position = IDLE_POSITION
 
+	_play_slash_trail()
 	_attack_tween = create_tween()
-	_attack_tween.tween_property(self, "position", WIND_POSITION, WIND_DURATION).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	_attack_tween.parallel().tween_property(_slash_pivot, "rotation", WIND_PIVOT_ROTATION, WIND_DURATION)
-	_attack_tween.chain().tween_callback(_play_slash_trail)
-	_attack_tween.chain().tween_property(self, "position", SLASH_POSITION, SLASH_DURATION).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-	_attack_tween.parallel().tween_property(_slash_pivot, "rotation", SLASH_PIVOT_ROTATION, SLASH_DURATION)
-	_attack_tween.chain().tween_property(self, "position", IDLE_POSITION, RECOVER_DURATION).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	_attack_tween.parallel().tween_property(_slash_pivot, "rotation", IDLE_PIVOT_ROTATION, RECOVER_DURATION)
+	_attack_tween.tween_method(_apply_slash_arc, 0.0, 1.0, SLASH_ARC_DURATION)
+
+
+func _apply_slash_arc(t: float) -> void:
+	if t <= CHAMBER_END_T:
+		var local_t := _smoothstep(t / CHAMBER_END_T)
+		_slash_pivot.rotation = IDLE_PIVOT_ROTATION.lerp(CHAMBER_PIVOT_ROTATION, local_t)
+	elif t <= CUT_END_T:
+		var span := CUT_END_T - CHAMBER_END_T
+		var local_t := _smoothstep((t - CHAMBER_END_T) / span)
+		_slash_pivot.rotation = CHAMBER_PIVOT_ROTATION.lerp(CUT_PIVOT_ROTATION, local_t)
+	else:
+		var span := 1.0 - CUT_END_T
+		var local_t := _smoothstep((t - CUT_END_T) / span)
+		_slash_pivot.rotation = CUT_PIVOT_ROTATION.lerp(IDLE_PIVOT_ROTATION, local_t)
+
+
+func _smoothstep(t: float) -> float:
+	var clamped := clampf(t, 0.0, 1.0)
+	return clamped * clamped * (3.0 - 2.0 * clamped)
 
 
 func _play_slash_trail() -> void:

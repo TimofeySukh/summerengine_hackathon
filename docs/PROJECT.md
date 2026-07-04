@@ -118,6 +118,7 @@ The game currently uses the main menu theme (`mainmenu_1.ogg`) from the **Battle
 - Moved the first-person katana viewmodel to the right side of the camera frame.
 - Tuned the katana viewmodel back toward center after the far-right placement overshot.
 - Nudged the katana viewmodel slightly left for a better right-side frame position.
+- Reworked katana slash into one continuous hilt-pivot arc (upper-left to lower-right); removed viewmodel position hops and attack movement impulse.
 - Integrated the BattleBlock Theater main menu theme as a looping background track via the new `MusicManager` autoload singleton.
 - Added a licensing warning in the project documentation noting that the soundtrack is copyrighted and must be replaced if the project goes beyond a meme game.
 - Added main menu (`ui/main_menu.tscn`) and in-game pause menu (`ui/pause_menu.tscn`) with Esc toggle, cursor release, Continue, and return to main menu.
