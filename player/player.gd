@@ -13,9 +13,14 @@ enum WEAPON_TYPE { DEFAULT, GRENADE }
 ## Speed of shot bullets.
 @export var bullet_speed := 10.0
 ## Max range to lock onto an enemy for a katana lunge.
-@export var attack_lunge_max_range := 24.0
-## Sprint speed during attack dash (m/s). Feels like an instant burst run, not a teleport.
-@export var attack_lunge_speed := 78.0
+@export var attack_lunge_max_range := 96.0
+## Max meters the player travels per attack lunge (separate from lock range).
+@export var attack_lunge_max_step := 4.0
+## Reference speed used to scale lunge duration from travel distance.
+@export var attack_lunge_speed := 22.0
+## Shortest and longest lunge motion durations in seconds.
+@export var attack_lunge_duration_min := 0.16
+@export var attack_lunge_duration_max := 0.28
 ## How far from the enemy center the lunge stops (melee reach).
 @export var attack_lunge_stop_margin := 0.35
 ## Forward lunge distance when no enemy is targeted.
@@ -25,7 +30,7 @@ enum WEAPON_TYPE { DEFAULT, GRENADE }
 ## Half-angle of the katana hit cone in degrees.
 @export var katana_hit_half_arc_deg := 40.0
 ## Max range to track an enemy for soft aim assist.
-@export var soft_aim_max_range := 52.0
+@export var soft_aim_max_range := 96.0
 ## Legacy alias kept for inspector compatibility; soft aim uses soft_aim_max_range.
 @export var chain_target_range := 52.0
 ## Wider hit arc used for a queued chain target.
@@ -103,8 +108,12 @@ enum WEAPON_TYPE { DEFAULT, GRENADE }
 
 var _lunge_active := false
 var _lunge_direction := Vector3.ZERO
-var _lunge_remaining := 0.0
+var _lunge_start := Vector3.ZERO
+var _lunge_end := Vector3.ZERO
+var _lunge_elapsed := 0.0
+var _lunge_duration := 0.2
 var _lunge_target: Node3D = null
+var _lunge_aim_point := Vector3.ZERO
 var _dash_active := false
 var _dash_start := Vector3.ZERO
 var _dash_end := Vector3.ZERO
@@ -115,6 +124,7 @@ var _is_dead := false
 var _webcam_warned := false
 var _voice_wave_timer := 0.0
 var _webcam_slash_until := 0.0
+var _wall_stuck_frames := 0
 
 func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -142,6 +152,7 @@ func _ready() -> void:
 	_katana_right.slash_struck.connect(perform_katana_hit)
 	_combat_feel.setup(_camera_controller.camera)
 	_shockwave.setup(self, _combat_feel)
+	call_deferred("_bind_run_director")
 	_update_health_ui()
 
 
@@ -168,14 +179,6 @@ func _physics_process(delta: float) -> void:
 	_is_on_floor_buffer = is_on_floor()
 	_move_direction = _get_camera_oriented_input()
 
-	_last_strong_direction = (_camera_controller.global_transform.basis * Vector3.FORWARD)
-	_last_strong_direction.y = 0.0
-	if _last_strong_direction.length_squared() > 0.0001:
-		_last_strong_direction = _last_strong_direction.normalized()
-	_combat_targeting.update(self, _camera_controller, delta)
-
-	_orient_character_to_direction(_last_strong_direction, delta)
-
 	if _dash_cooldown_left > 0.0:
 		_dash_cooldown_left = maxf(0.0, _dash_cooldown_left - delta)
 
@@ -186,6 +189,11 @@ func _physics_process(delta: float) -> void:
 			and not _dash_active \
 			and not _is_katana_slashing():
 		_begin_dash()
+
+	if ControlMode.is_webcam():
+		_poll_webcam_slash()
+		_poll_webcam_shockwave()
+		_poll_voice_wave()
 
 	var y_velocity := velocity.y
 	velocity.y = 0.0
@@ -202,6 +210,16 @@ func _physics_process(delta: float) -> void:
 	else:
 		velocity = velocity.move_toward(Vector3.ZERO, move_speed * acceleration * delta)
 	velocity.y = y_velocity
+
+	_combat_targeting.update(self, _camera_controller, delta)
+	_camera_controller.sync_camera_from_pivot()
+	_last_strong_direction = _camera_controller.get_flat_forward()
+	if _last_strong_direction.length_squared() < 0.0001:
+		_last_strong_direction = (_camera_controller.global_transform.basis * Vector3.FORWARD)
+		_last_strong_direction.y = 0.0
+		if _last_strong_direction.length_squared() > 0.0001:
+			_last_strong_direction = _last_strong_direction.normalized()
+	_orient_character_to_direction(_last_strong_direction, delta)
 
 	if is_aiming:
 		_camera_controller.set_pivot(_camera_controller.CAMERA_PIVOT.OVER_SHOULDER)
@@ -227,9 +245,6 @@ func _physics_process(delta: float) -> void:
 		_shockwave.try_trigger()
 
 	if ControlMode.is_webcam():
-		_poll_webcam_slash()
-		_poll_webcam_shockwave()
-		_poll_voice_wave()
 		_update_webcam_katanas(delta)
 		if not _webcam_warned and not CameraInputBridge.is_stream_active():
 			_webcam_warned = true
@@ -267,6 +282,16 @@ func _physics_process(delta: float) -> void:
 	if delta_position.length() < epsilon and velocity.length() > epsilon:
 		global_position += get_wall_normal() * 0.1
 
+	# Only detect wall-stick during normal movement — lunge/dash move via position lerp, not velocity.
+	if not _lunge_active and not _dash_active and _move_direction.length_squared() > 0.01:
+		if delta_position.length() < 0.03:
+			_wall_stuck_frames += 1
+		else:
+			_wall_stuck_frames = 0
+		if _wall_stuck_frames >= 5:
+			_wall_stuck_frames = 0
+			_combat_targeting.force_reacquire_lock(self, _camera_controller)
+
 
 func attack() -> void:
 	if ControlMode.is_webcam():
@@ -274,13 +299,27 @@ func attack() -> void:
 	_slash_with_katana(_katana_right)
 
 
+func _bind_run_director() -> void:
+	for node in get_tree().get_nodes_in_group("run_director"):
+		if node.has_signal("wave_started") and not node.wave_started.is_connected(_on_wave_started):
+			node.wave_started.connect(_on_wave_started)
+
+
+func _on_wave_started(_wave: int) -> void:
+	call_deferred("_refresh_combat_lock")
+
+
+func _refresh_combat_lock() -> void:
+	_combat_targeting.force_reacquire_lock(self, _camera_controller)
+
+
 func _poll_webcam_slash() -> void:
 	var hand := CameraInputBridge.poll_slash()
-	if hand.is_empty() or _is_katana_slashing():
+	if hand.is_empty():
 		return
+	_webcam_slash_until = Time.get_ticks_msec() / 1000.0 + KatanaVisual.SLASH_DURATION
 	_combat_targeting.on_attack(self, _camera_controller)
 	_begin_attack_lunge()
-	_webcam_slash_until = Time.get_ticks_msec() / 1000.0 + KatanaVisual.SLASH_DURATION
 	_webcam_katanas.slash_camera_hand(hand)
 	_character_skin.punch()
 
@@ -334,7 +373,7 @@ func _trigger_voice_wave() -> void:
 
 
 func _slash_with_katana(katana: KatanaVisual) -> void:
-	if katana.is_slashing():
+	if katana.is_slashing() or _lunge_active:
 		return
 	_combat_targeting.on_attack(self, _camera_controller)
 	_begin_attack_lunge()
@@ -348,6 +387,10 @@ func is_katana_slashing() -> bool:
 
 func is_attack_lunge_active() -> bool:
 	return _lunge_active
+
+
+func on_enemy_spawned(enemy: Node3D) -> void:
+	_combat_targeting.on_enemy_spawned(self, _camera_controller, enemy)
 
 
 func sync_facing_from_camera() -> void:
@@ -379,56 +422,74 @@ func perform_katana_hit() -> void:
 
 func _begin_attack_lunge() -> void:
 	_lunge_active = false
-	_lunge_remaining = 0.0
+	_lunge_elapsed = 0.0
 	_lunge_target = null
+	_lunge_aim_point = Vector3.ZERO
 	_lunge_direction = Vector3.ZERO
+	_lunge_start = global_position
+	_lunge_end = global_position
 
-	var lunge := _compute_attack_lunge()
-	if lunge.distance < 0.05:
+	var snap_target := _combat_targeting.pick_lunge_target(self, _camera_controller)
+	if snap_target == null and _combat_targeting.is_lock_valid():
+		snap_target = _combat_targeting.lock
+	if snap_target != null:
+		var aim_dir := get_enemy_track_point(snap_target) - global_position
+		aim_dir.y = 0.0
+		if aim_dir.length_squared() > 0.0001:
+			_combat_targeting.snap_aim_toward(
+				self, _camera_controller, aim_dir.normalized(), attack_snap_turn_deg
+			)
+			_camera_controller.sync_camera_from_pivot()
+
+	var lunge := _compute_attack_lunge(snap_target)
+	if lunge.distance < 0.05 and snap_target != null:
+		lunge = _lunge_toward_node(snap_target, global_position, attack_lunge_max_step, true)
+	if lunge.distance < 0.02:
 		return
 
 	_lunge_target = lunge.get("target")
+	_lunge_aim_point = lunge.get("aim_point", global_position)
 	_lunge_direction = lunge.direction
-	_lunge_remaining = lunge.distance
+	_lunge_start = global_position
+	_lunge_end = global_position + lunge.direction * lunge.distance
+	_lunge_duration = clampf(
+		lunge.distance / maxf(attack_lunge_speed, 1.0),
+		attack_lunge_duration_min,
+		attack_lunge_duration_max
+	)
 	_lunge_active = true
 
 
 func _apply_attack_lunge(delta: float) -> void:
 	if not _lunge_active:
 		return
-	if not _is_katana_slashing():
+
+	var origin_y := global_position.y
+	if _lunge_direction.length_squared() > 0.0001:
+		_camera_controller.rotate_toward_direction(
+			_lunge_direction,
+			deg_to_rad(threat_aim_turn_deg) * delta
+		)
+		_camera_controller.sync_camera_from_pivot()
+		sync_facing_from_camera()
+
+	_lunge_elapsed += delta
+	var t := clampf(_lunge_elapsed / _lunge_duration, 0.0, 1.0)
+	t = t * t * (3.0 - 2.0 * t)
+	var next_pos := _lunge_start.lerp(_lunge_end, t)
+	next_pos.y = origin_y
+	global_position = next_pos
+
+	if _lunge_elapsed >= _lunge_duration:
+		var end_pos := _lunge_end
+		end_pos.y = origin_y
+		global_position = end_pos
 		_end_lunge()
-		return
-
-	if _lunge_target != null and is_instance_valid(_lunge_target):
-		var to_target := _lunge_target.global_position - global_position
-		to_target.y = 0.0
-		if to_target.length_squared() > 0.01:
-			var stop_distance := attack_lunge_stop_margin + _get_body_collision_radius(_lunge_target)
-			if to_target.length() <= stop_distance + 0.15:
-				_end_lunge()
-				return
-			_lunge_direction = to_target.normalized()
-			_camera_controller.rotate_toward_direction(
-				_lunge_direction,
-				deg_to_rad(threat_aim_turn_deg) * delta
-			)
-			sync_facing_from_camera()
-
-	var step := attack_lunge_speed * delta
-	if step >= _lunge_remaining:
-		step = _lunge_remaining
-		_end_lunge()
-	else:
-		_lunge_remaining -= step
-
-	velocity.x = _lunge_direction.x * attack_lunge_speed
-	velocity.z = _lunge_direction.z * attack_lunge_speed
 
 
 func _end_lunge() -> void:
 	_lunge_active = false
-	_lunge_remaining = 0.0
+	_lunge_elapsed = 0.0
 	velocity.x = 0.0
 	velocity.z = 0.0
 
@@ -466,12 +527,16 @@ func _apply_dash(delta: float) -> void:
 		_dash_active = false
 
 
-func _compute_attack_lunge() -> Dictionary:
+func _compute_attack_lunge(preferred: Node3D = null) -> Dictionary:
 	var origin := global_position
-	var target := _combat_targeting.pick_lunge_target(self, _camera_controller)
+	var target := preferred
+	if target == null or not is_instance_valid(target):
+		target = _combat_targeting.pick_lunge_target(self, _camera_controller)
+	if target == null and _combat_targeting.is_lock_valid():
+		target = _combat_targeting.lock
 	if target != null:
-		return _lunge_toward_node(target, origin, attack_lunge_max_range)
-	return _lunge_forward(origin, attack_lunge_fallback_distance)
+		return _lunge_toward_node(target, origin, attack_lunge_max_step, false)
+	return {"direction": Vector3.ZERO, "distance": 0.0, "target": null, "aim_point": origin}
 
 
 func _lunge_forward(origin: Vector3, distance: float) -> Dictionary:
@@ -479,32 +544,39 @@ func _lunge_forward(origin: Vector3, distance: float) -> Dictionary:
 	if forward.length_squared() < 0.0001:
 		forward = get_facing_direction()
 	if forward.length_squared() < 0.0001:
-		return {"direction": Vector3.ZERO, "distance": 0.0, "target": null}
+		return {"direction": Vector3.ZERO, "distance": 0.0, "target": null, "aim_point": origin}
 
 	var travel := _clamp_lunge_travel(origin, forward, distance)
-	return {"direction": forward, "distance": travel, "target": null}
+	var aim_point := origin + forward * travel
+	aim_point.y = origin.y
+	return {"direction": forward, "distance": travel, "target": null, "aim_point": aim_point}
 
 
-func _lunge_toward_node(target: Node3D, origin: Vector3, max_travel: float = -1.0) -> Dictionary:
+func _lunge_toward_node(target: Node3D, origin: Vector3, max_travel: float = -1.0, force_min := false) -> Dictionary:
 	if max_travel < 0.0:
-		max_travel = attack_lunge_max_range
-	var target_pos := _get_body_aim_point(target, origin.y)
-	if _camera_controller.get_aim_collider() == target:
-		target_pos = _camera_controller.get_aim_target()
-		target_pos.y = origin.y
+		max_travel = attack_lunge_max_step
+	var target_pos := get_enemy_track_point(target)
+	target_pos.y = origin.y
 
 	var to_target := target_pos - origin
 	to_target.y = 0.0
 	var distance := to_target.length()
 	if distance < 0.05:
-		return {"direction": Vector3.ZERO, "distance": 0.0, "target": null}
+		return {"direction": Vector3.ZERO, "distance": 0.0, "target": null, "aim_point": origin}
 
 	var direction := to_target / distance
 	var stop_distance := attack_lunge_stop_margin + _get_body_collision_radius(target)
 	var travel := maxf(0.0, distance - stop_distance)
 	travel = minf(travel, max_travel)
+	var raw_travel := travel
 	travel = _clamp_lunge_travel(origin, direction, travel)
-	return {"direction": direction, "distance": travel, "target": target}
+	if travel < 0.05 and raw_travel >= 0.08:
+		travel = minf(raw_travel * 0.5, 1.0)
+	if force_min and travel < 0.2:
+		travel = minf(0.2, maxf(raw_travel, 0.08))
+	if travel < 0.02:
+		return {"direction": Vector3.ZERO, "distance": 0.0, "target": null, "aim_point": origin}
+	return {"direction": direction, "distance": travel, "target": target, "aim_point": target_pos}
 
 
 func _clamp_lunge_travel(origin: Vector3, direction: Vector3, max_travel: float) -> float:
@@ -519,7 +591,7 @@ func _raycast_lunge_distance(origin: Vector3, direction: Vector3, max_distance: 
 	var ray_target := ray_origin + direction * max_distance
 	var ray_query := PhysicsRayQueryParameters3D.create(ray_origin, ray_target)
 	ray_query.exclude = exclude
-	ray_query.collision_mask = 0xFFFFFFFF
+	ray_query.collision_mask = 1
 	var hit := space_state.intersect_ray(ray_query)
 	if hit.is_empty():
 		return max_distance
@@ -606,7 +678,7 @@ func respawn() -> void:
 	global_position = _start_position
 	velocity = Vector3.ZERO
 	_lunge_active = false
-	_lunge_remaining = 0.0
+	_lunge_elapsed = 0.0
 	_lunge_target = null
 	_dash_active = false
 	_dash_elapsed = 0.0
@@ -656,7 +728,7 @@ func _hit_with_katana() -> void:
 	if hit_target == null:
 		return
 
-	var hit_position := _get_body_aim_point(hit_target, origin.y)
+	var hit_position := get_enemy_aim_point(hit_target)
 	_damage_katana_target(hit_target, hit_position, forward)
 
 
@@ -686,8 +758,31 @@ func _get_flat_forward() -> Vector3:
 	return forward.normalized()
 
 
+func get_enemy_aim_point(body: Node3D) -> Vector3:
+	if _camera_controller.get_aim_collider() == body:
+		return _camera_controller.get_aim_target()
+	return get_enemy_track_point(body)
+
+
+func get_enemy_track_point(body: Node3D) -> Vector3:
+	return _get_body_head_point(body)
+
+
+func _get_body_head_point(body: Node3D) -> Vector3:
+	for child in body.get_children():
+		if child is CollisionShape3D:
+			var shape := (child as CollisionShape3D).shape
+			if shape is CapsuleShape3D:
+				var capsule := shape as CapsuleShape3D
+				var head_y := (child as CollisionShape3D).global_position.y + capsule.height * 0.5 - capsule.radius * 0.35
+				return Vector3(body.global_position.x, head_y, body.global_position.z)
+	return body.global_position + Vector3(0.0, 1.45, 0.0)
+
+
 func _get_body_aim_point(body: Node3D, flat_y: float) -> Vector3:
-	return Vector3(body.global_position.x, flat_y, body.global_position.z)
+	var point := get_enemy_aim_point(body)
+	point.y = flat_y
+	return point
 
 
 func _get_body_collision_radius(body: Node3D) -> float:

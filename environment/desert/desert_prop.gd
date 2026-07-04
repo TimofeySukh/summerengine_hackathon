@@ -22,7 +22,6 @@ func setup(kind: Kind, seed_value: int) -> void:
 
 
 func _build_rock_cluster(rng: RandomNumberGenerator) -> void:
-	var body := _make_body()
 	var chunk_count := rng.randi_range(2, 4)
 	for i in chunk_count:
 		var mesh := MeshInstance3D.new()
@@ -40,11 +39,9 @@ func _build_rock_cluster(rng: RandomNumberGenerator) -> void:
 		)
 		mesh.rotation.y = rng.randf_range(0.0, TAU)
 		add_child(mesh)
-		_add_box_collision(body, mesh.position, box.size * 0.92)
 
 
 func _build_ruin_pillar(rng: RandomNumberGenerator) -> void:
-	var body := _make_body()
 	var height := rng.randf_range(2.2, 4.8)
 	var radius := rng.randf_range(0.35, 0.65)
 	var mesh := MeshInstance3D.new()
@@ -57,7 +54,6 @@ func _build_ruin_pillar(rng: RandomNumberGenerator) -> void:
 	mesh.position = Vector3(0.0, height * 0.5, 0.0)
 	mesh.rotation.y = rng.randf_range(0.0, TAU)
 	add_child(mesh)
-	_add_cylinder_collision(body, mesh.position, radius, height)
 
 	if rng.randf() > 0.35:
 		var cap := MeshInstance3D.new()
@@ -91,7 +87,6 @@ func _build_dune(rng: RandomNumberGenerator) -> void:
 
 
 func _build_boulder(rng: RandomNumberGenerator) -> void:
-	var body := _make_body()
 	var mesh := MeshInstance3D.new()
 	var sphere := SphereMesh.new()
 	var radius := rng.randf_range(0.55, 1.35)
@@ -109,39 +104,3 @@ func _build_boulder(rng: RandomNumberGenerator) -> void:
 	mesh.position = Vector3(0.0, radius * 0.35, 0.0)
 	mesh.rotation = Vector3(rng.randf_range(-0.2, 0.2), rng.randf_range(0.0, TAU), rng.randf_range(-0.2, 0.2))
 	add_child(mesh)
-	_add_sphere_collision(body, mesh.position, radius * 0.9)
-
-
-func _make_body() -> StaticBody3D:
-	var body := StaticBody3D.new()
-	body.collision_layer = 2
-	add_child(body)
-	return body
-
-
-func _add_box_collision(body: StaticBody3D, pos: Vector3, size: Vector3) -> void:
-	var shape := CollisionShape3D.new()
-	var box := BoxShape3D.new()
-	box.size = size
-	shape.shape = box
-	shape.position = pos
-	body.add_child(shape)
-
-
-func _add_cylinder_collision(body: StaticBody3D, pos: Vector3, radius: float, height: float) -> void:
-	var shape := CollisionShape3D.new()
-	var cylinder := CylinderShape3D.new()
-	cylinder.radius = radius
-	cylinder.height = height
-	shape.shape = cylinder
-	shape.position = pos
-	body.add_child(shape)
-
-
-func _add_sphere_collision(body: StaticBody3D, pos: Vector3, radius: float) -> void:
-	var shape := CollisionShape3D.new()
-	var sphere := SphereShape3D.new()
-	sphere.radius = radius
-	shape.shape = sphere
-	shape.position = pos
-	body.add_child(shape)

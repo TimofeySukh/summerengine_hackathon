@@ -174,10 +174,13 @@ func _start_wave() -> void:
 		min_spawn_interval,
 		base_spawn_interval - float(current_wave - 1) * 0.06
 	)
-	_spawn_timer = 0.35
+	_spawn_timer = _spawn_interval
 	phase = Phase.COMBAT
 	_intermission_message = ""
 	wave_started.emit(current_wave)
+	for _i in mini(3, _enemies_remaining):
+		if _spawner.spawn_enemy():
+			_enemies_remaining -= 1
 	_emit_stats_if_changed(true)
 
 
@@ -199,12 +202,14 @@ func _process_combat(delta: float) -> void:
 		return
 
 	if _enemies_remaining > 0:
+		if _spawner.get_alive_count() == 0:
+			_spawn_timer = minf(_spawn_timer, 0.12)
 		_spawn_timer -= delta
 		if _spawn_timer <= 0.0:
 			_spawn_timer = _spawn_interval
-			_spawner.spawn_enemy()
-			_enemies_remaining -= 1
-			_emit_stats_if_changed(true)
+			if _spawner.spawn_enemy():
+				_enemies_remaining -= 1
+				_emit_stats_if_changed(true)
 		return
 
 	if _spawner.get_alive_count() == 0:

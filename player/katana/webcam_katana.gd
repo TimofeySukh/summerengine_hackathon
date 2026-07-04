@@ -14,15 +14,19 @@ const MESH_BASIS := Basis(
 const MESH_ORIGIN := Vector3(0.16 * MESH_SCALE / 0.11, 0.0, -0.08 * MESH_SCALE / 0.11)
 const IDLE_PIVOT := Vector3(0.0, PI, PI * 0.5)
 const SWING_PIVOT := Vector3(0.0, PI, 0.75)
+const SLASH_DURATION := 0.28
+const HIT_TIME := 0.10
 const HANDLE_PLANE_Z := -0.42
 
+signal slash_struck
+
 @export var hand_slot: HandSlot = HandSlot.RIGHT
-@export var smoothing := 18.0
-@export var swing_rise := 16.0
-@export var swing_fall := 10.0
-@export var handle_screen_margin := 0.0
-@export var max_side_tilt := 0.55
-@export var tilt_smoothing := 16.0
+@export var smoothing := 28.0
+@export var swing_rise := 22.0
+@export var swing_fall := 14.0
+@export var max_side_tilt := 0.72
+@export var tilt_smoothing := 22.0
+@export var screen_reach := 1.18
 
 @onready var _pivot: Node3D = $SlashPivot
 @onready var _katana_mesh: Node3D = $SlashPivot/Katana
@@ -33,6 +37,7 @@ var _swing_target := 0.0
 var _swing_current := 0.0
 var _tilt_target := 0.0
 var _tilt_current := 0.0
+var _slash_tween: Tween
 
 
 func setup(camera: Camera3D, slot: HandSlot = HandSlot.RIGHT) -> void:
@@ -55,6 +60,12 @@ func set_active(active: bool) -> void:
 		_tilt_target = 0.0
 		_tilt_current = 0.0
 		_pivot.rotation = IDLE_PIVOT
+		if _slash_tween and _slash_tween.is_valid():
+			_slash_tween.kill()
+
+
+func is_slashing() -> bool:
+	return _slash_tween != null and _slash_tween.is_valid() and _slash_tween.is_running()
 
 
 func set_tracking(norm_x: float, norm_y: float, swing: float, side_tilt: float = 0.0) -> void:
@@ -62,18 +73,20 @@ func set_tracking(norm_x: float, norm_y: float, swing: float, side_tilt: float =
 	_tilt_target = clampf(side_tilt, -max_side_tilt, max_side_tilt)
 	if _camera == null:
 		return
-
-	var viewport_size := get_viewport().get_visible_rect().size
-	var margin := handle_screen_margin
-	var screen := Vector2(
-		clampf(norm_x * viewport_size.x, margin, viewport_size.x - margin),
-		clampf(norm_y * viewport_size.y, margin, viewport_size.y - margin)
-	)
-	_target_pos = _ray_hit_plane(screen)
+	_target_pos = _screen_to_local(clampf(norm_x, 0.0, 1.0), clampf(norm_y, 0.0, 1.0))
 
 
 func trigger_hit() -> void:
-	pass
+	if is_slashing():
+		return
+	if _slash_tween and _slash_tween.is_valid():
+		_slash_tween.kill()
+
+	_swing_target = 1.0
+	_slash_tween = create_tween()
+	_slash_tween.tween_callback(func(): slash_struck.emit()).set_delay(HIT_TIME)
+	_slash_tween.tween_interval(maxf(0.0, SLASH_DURATION - HIT_TIME))
+	_slash_tween.tween_callback(func(): _swing_target = 0.0)
 
 
 func _process(delta: float) -> void:
@@ -86,25 +99,17 @@ func _process(delta: float) -> void:
 	_pivot.rotation = base_pivot + Vector3(0.0, 0.0, _tilt_current)
 
 
-func _ray_hit_plane(screen: Vector2) -> Vector3:
-	var pos := _intersect_screen(screen)
-	# Same screen Y must map to the same handle height regardless of X.
+func _screen_to_local(norm_x: float, norm_y: float) -> Vector3:
+	# Linear 1:1 map: same camera Y always -> same handle height, independent of X.
+	var depth := absf(HANDLE_PLANE_Z)
+	var fov_rad := deg_to_rad(_camera.fov)
 	var vp := get_viewport().get_visible_rect().size
-	var center_x := Vector2(vp.x * 0.5, screen.y)
-	pos.y = _intersect_screen(center_x).y
-	return pos
-
-
-func _intersect_screen(screen: Vector2) -> Vector3:
-	var ray_origin := _camera.project_ray_origin(screen)
-	var ray_dir := _camera.project_ray_normal(screen)
-	var anchor := _camera.to_global(Vector3(0.0, 0.0, HANDLE_PLANE_Z))
-	var plane_normal := -_camera.global_transform.basis.z
-	var denom := ray_dir.dot(plane_normal)
-	if absf(denom) < 0.0001:
-		return Vector3(0.0, 0.0, HANDLE_PLANE_Z)
-	var t := (anchor - ray_origin).dot(plane_normal) / denom
-	return _camera.to_local(ray_origin + ray_dir * t)
+	var aspect := vp.x / maxf(vp.y, 1.0)
+	var half_h := tan(fov_rad * 0.5) * depth * screen_reach
+	var half_w := half_h * aspect
+	var x := (norm_x - 0.5) * 2.0 * half_w
+	var y := (0.5 - norm_y) * 2.0 * half_h
+	return Vector3(x, y, HANDLE_PLANE_Z)
 
 
 func _apply_mesh_mirror(mirror: bool) -> void:

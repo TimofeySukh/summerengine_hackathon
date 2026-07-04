@@ -55,13 +55,19 @@ func _process(delta: float) -> void:
 
 	transform.basis = Basis.from_euler(_euler_rotation)
 
-	camera.global_transform = _pivot.global_transform
-	camera.rotation.z = 0
+	sync_camera_from_pivot()
 	if camera.has_method("update_shake"):
 		camera.update_shake(delta)
 		camera.apply_shake_offset()
 
 	_rotation_input = 0.0
+
+
+func sync_camera_from_pivot() -> void:
+	if _pivot == null or camera == null:
+		return
+	camera.global_transform = _pivot.global_transform
+	camera.rotation.z = 0.0
 
 
 func setup(anchor: CharacterBody3D) -> void:
@@ -75,6 +81,7 @@ func setup(anchor: CharacterBody3D) -> void:
 	camera.global_transform = camera.global_transform.interpolate_with(_pivot.global_transform, 0.1)
 	_camera_spring_arm.add_excluded_object(_anchor.get_rid())
 	_camera_raycast.add_exception_rid(_anchor.get_rid())
+	_camera_raycast.collision_mask = 1
 
 
 func set_pivot(pivot_type: CAMERA_PIVOT) -> void:
@@ -110,6 +117,7 @@ func set_yaw(yaw: float) -> void:
 	_euler_rotation.x = 0.0
 	_euler_rotation.y = yaw
 	transform.basis = Basis.from_euler(_euler_rotation)
+	sync_camera_from_pivot()
 
 
 func get_flat_forward() -> Vector3:
@@ -118,6 +126,15 @@ func get_flat_forward() -> Vector3:
 	if forward.length_squared() < 0.0001:
 		return Vector3.ZERO
 	return forward.normalized()
+
+
+func snap_to_direction(direction: Vector3) -> void:
+	var flat := direction
+	flat.y = 0.0
+	if flat.length_squared() < 0.0001:
+		return
+	flat = flat.normalized()
+	set_yaw(atan2(-flat.x, -flat.z))
 
 
 func rotate_toward_direction(direction: Vector3, max_radians: float) -> void:

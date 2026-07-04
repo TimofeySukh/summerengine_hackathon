@@ -32,28 +32,37 @@ func is_threat_active() -> bool:
 	return lock_mode == LockMode.THREAT and Time.get_ticks_msec() / 1000.0 < threat_until
 
 
+func _lunge_range(player: Player) -> float:
+	return maxf(maxf(player.attack_lunge_max_range, player.soft_aim_max_range), 96.0)
+
+
 func _aim_range(player: Player) -> float:
-	return maxf(player.soft_aim_max_range, player.chain_target_range)
+	return maxf(maxf(player.soft_aim_max_range, player.chain_target_range), 96.0)
+
+
+func acquire_nearest_enemy(player: Player, exclude: Node3D = null) -> Node3D:
+	return _find_nearest(player, 9999.0, false, exclude)
 
 
 func update(player: Player, camera: CameraController, delta: float) -> void:
 	_refresh_soft_lock(player, camera)
-
-	if player.is_attack_lunge_active():
-		return
-
 	_apply_soft_aim(player, camera, delta)
 
 
 func on_attack(player: Player, camera: CameraController) -> Node3D:
-	var target := pick_lunge_target(player, camera)
-	if target == null:
-		target = _find_nearest(player, player.attack_lunge_max_range, false)
+	var target := acquire_nearest_enemy(player)
 	if target != null:
 		lock = target
 		lock_mode = LockMode.ATTACK
-		snap_aim_toward(player, camera, _flat_direction(player, target), player.attack_snap_turn_deg)
-	return target
+		var aim_dir := player.get_enemy_track_point(target) - player.global_position
+		aim_dir.y = 0.0
+		if aim_dir.length_squared() < 0.0001:
+			aim_dir = _flat_direction(player, target)
+		if aim_dir.length_squared() > 0.0001:
+			snap_aim_toward(player, camera, aim_dir.normalized(), player.attack_snap_turn_deg)
+			camera.sync_camera_from_pivot()
+		return target
+	return null
 
 
 func on_threat(player: Player, attacker: Node3D) -> void:
@@ -68,44 +77,53 @@ func on_threat(player: Player, attacker: Node3D) -> void:
 
 
 func on_kill(player: Player, camera: CameraController, dead: Node3D) -> void:
-	lock_mode = LockMode.SOFT
 	threat_until = 0.0
-	lock = _find_best_target(
-		player,
-		camera,
-		player.global_position,
-		dead,
-		_aim_range(player),
-		player.soft_lock_acquire_half_angle_deg,
-		false
-	)
+	lock = acquire_nearest_enemy(player, dead)
+	if lock != null:
+		lock_mode = LockMode.SOFT
+		var aim_dir := player.get_enemy_track_point(lock) - player.global_position
+		aim_dir.y = 0.0
+		if aim_dir.length_squared() > 0.0001:
+			snap_aim_instant(player, camera, aim_dir.normalized())
+	else:
+		lock = null
+		lock_mode = LockMode.NONE
+
+
+func on_enemy_spawned(player: Player, camera: CameraController, enemy: Node3D) -> void:
+	if not _is_damageable(player, enemy):
+		return
+	if is_lock_valid() and _flat_distance(player, lock) <= _flat_distance(player, enemy):
+		return
+	lock = enemy
+	lock_mode = LockMode.SOFT
+	var aim_dir := player.get_enemy_track_point(enemy) - player.global_position
+	aim_dir.y = 0.0
+	if aim_dir.length_squared() > 0.0001:
+		snap_aim_instant(player, camera, aim_dir.normalized())
+
+
+func force_reacquire_lock(player: Player, camera: CameraController) -> void:
+	threat_until = 0.0
+	lock = acquire_nearest_enemy(player)
 	if lock == null:
-		lock = _find_nearest(player, _aim_range(player), false)
+		lock_mode = LockMode.NONE
+		return
+	lock_mode = LockMode.SOFT
+	var direction := player.get_enemy_track_point(lock) - player.global_position
+	direction.y = 0.0
+	if direction.length_squared() > 0.0001:
+		snap_aim_instant(player, camera, direction.normalized())
+
+
+func has_line_of_sight_to(player: Player, body: Node3D) -> bool:
+	return _has_line_of_sight(player, body)
 
 
 func pick_lunge_target(player: Player, camera: CameraController) -> Node3D:
-	if is_lock_valid() and _flat_distance(player, lock) <= player.attack_lunge_max_range:
+	if is_lock_valid():
 		return lock
-
-	var crosshair := camera.get_aim_collider()
-	if crosshair is Node3D:
-		var body := crosshair as Node3D
-		if _is_damageable(player, body) and _flat_distance(player, body) <= player.attack_lunge_max_range:
-			return body
-
-	var in_cone := _find_best_target(
-		player,
-		camera,
-		player.global_position,
-		null,
-		player.attack_lunge_max_range,
-		100.0,
-		false
-	)
-	if in_cone != null:
-		return in_cone
-
-	return _find_nearest(player, player.attack_lunge_max_range, false)
+	return acquire_nearest_enemy(player)
 
 
 func pick_melee_target(player: Player, camera: CameraController, origin: Vector3, forward: Vector3) -> Node3D:
@@ -135,7 +153,7 @@ func pick_melee_target(player: Player, camera: CameraController, origin: Vector3
 
 func get_aim_direction(player: Player, camera: CameraController) -> Vector3:
 	if is_lock_valid():
-		var dir := lock.global_position - player.global_position
+		var dir := player.get_enemy_track_point(lock) - player.global_position
 		dir.y = 0.0
 		if dir.length_squared() > 0.0001:
 			return dir.normalized()
@@ -149,38 +167,61 @@ func snap_aim_toward(player: Player, camera: CameraController, direction: Vector
 	player.sync_facing_from_camera()
 
 
-func _refresh_soft_lock(player: Player, camera: CameraController) -> void:
-	if is_threat_active() and is_lock_valid():
+func snap_aim_instant(player: Player, camera: CameraController, direction: Vector3) -> void:
+	if direction.length_squared() < 0.0001:
 		return
+	camera.snap_to_direction(direction)
+	player.sync_facing_from_camera()
+	camera.sync_camera_from_pivot()
 
+
+func get_nearest_in_range(player: Player, max_range: float) -> Node3D:
+	if is_lock_valid() and _flat_distance(player, lock) <= max_range:
+		return lock
+	return _find_nearest(player, max_range, false)
+
+
+func facing_dot_to(player: Player, camera: CameraController, body: Node3D) -> float:
+	var to_target := player.get_enemy_track_point(body) - player.global_position
+	to_target.y = 0.0
+	if to_target.length_squared() < 0.0001:
+		return 1.0
+	var forward := camera.get_flat_forward()
+	if forward.length_squared() < 0.0001:
+		forward = player.get_facing_direction()
+	if forward.length_squared() < 0.0001:
+		return -1.0
+	return forward.normalized().dot(to_target.normalized())
+
+
+func _refresh_soft_lock(player: Player, camera: CameraController) -> void:
 	if not is_lock_valid():
 		lock = null
 		lock_mode = LockMode.NONE
 	elif lock.has_method("is_alive") and not lock.is_alive():
 		lock = null
 		lock_mode = LockMode.NONE
-	elif not is_threat_active():
-		if _flat_distance(player, lock) > _aim_range(player) * 1.12:
-			lock = null
-			lock_mode = LockMode.NONE
 
 	if lock_mode == LockMode.ATTACK and not player.is_attack_lunge_active():
 		lock_mode = LockMode.SOFT if is_lock_valid() else LockMode.NONE
 
+	if is_threat_active() and is_lock_valid():
+		return
+
 	var aim_range := _aim_range(player)
-	var candidate := _find_best_target(
-		player,
-		camera,
-		player.global_position,
-		null,
-		aim_range,
-		player.soft_lock_acquire_half_angle_deg,
-		false
-	)
-	if candidate == null:
-		candidate = _find_nearest_in_front(player, camera, aim_range)
-	if candidate == null:
-		candidate = _find_nearest(player, aim_range, false)
+	var candidate: Node3D = null
+	if lock == null:
+		candidate = acquire_nearest_enemy(player)
+	if candidate == null and lock == null:
+		candidate = _find_best_target(
+			player,
+			camera,
+			player.global_position,
+			null,
+			aim_range,
+			180.0,
+			false
+		)
 	if candidate == null:
 		return
 
@@ -194,16 +235,20 @@ func _refresh_soft_lock(player: Player, camera: CameraController) -> void:
 
 	var current_dist := _flat_distance(player, lock)
 	var candidate_dist := _flat_distance(player, candidate)
-	if candidate_dist + 1.0 < current_dist:
+	if candidate_dist + 2.5 < current_dist:
 		lock = candidate
 		lock_mode = LockMode.SOFT
 
 
 func _apply_soft_aim(player: Player, camera: CameraController, delta: float) -> void:
 	if not is_lock_valid():
-		return
+		lock = acquire_nearest_enemy(player)
+		if lock == null:
+			return
+		lock_mode = LockMode.SOFT
 
-	var direction := lock.global_position - player.global_position
+	var aim_body := lock
+	var direction := player.get_enemy_track_point(aim_body) - player.global_position
 	direction.y = 0.0
 	if direction.length_squared() < 0.0001:
 		return
@@ -216,23 +261,33 @@ func _apply_soft_aim(player: Player, camera: CameraController, delta: float) -> 
 		return
 
 	var facing := forward.dot(direction)
-	var distance := _flat_distance(player, lock)
-	var turn_speed_deg := player.soft_aim_turn_deg
+	var angle_deg := rad_to_deg(acos(clampf(facing, -1.0, 1.0)))
+	if angle_deg > 28.0:
+		snap_aim_instant(player, camera, direction)
+		return
 
-	if is_threat_active():
+	var distance := _flat_distance(player, aim_body)
+	var turn_speed_deg := player.soft_aim_turn_deg
+	var crosshair := camera.get_aim_collider()
+	var on_locked_target := crosshair == aim_body
+
+	if angle_deg > 20.0:
+		var misalign := clampf((angle_deg - 20.0) / 160.0, 0.0, 1.0)
+		turn_speed_deg = lerpf(player.threat_aim_turn_deg, player.threat_aim_turn_deg * 6.0, misalign)
+	elif is_threat_active():
 		turn_speed_deg = lerpf(player.soft_aim_turn_deg, player.threat_aim_turn_deg, clampf(1.05 - facing, 0.35, 1.0))
-	elif facing <= -0.2:
-		turn_speed_deg *= 0.3
+	elif not on_locked_target:
+		turn_speed_deg = maxf(turn_speed_deg, player.threat_aim_turn_deg)
 	else:
 		var edge := clampf(facing, 0.0, 1.0)
-		turn_speed_deg *= lerpf(0.55, 1.0, edge)
+		turn_speed_deg *= lerpf(0.85, 1.0, edge)
 
 	var far_t := clampf(distance / _aim_range(player), 0.0, 1.0)
 	turn_speed_deg *= lerpf(1.0, player.soft_aim_far_boost, far_t)
 
-	turn_speed_deg = maxf(turn_speed_deg, player.soft_aim_turn_deg * 0.4)
 	camera.rotate_toward_direction(direction, deg_to_rad(turn_speed_deg) * delta)
 	player.sync_facing_from_camera()
+	camera.sync_camera_from_pivot()
 
 
 func _find_best_target(
@@ -330,13 +385,13 @@ func _find_nearest_in_front(player: Player, camera: CameraController, max_range:
 	return best
 
 
-func _find_nearest(player: Player, max_range: float, front_only: bool) -> Node3D:
+func _find_nearest(player: Player, max_range: float, front_only: bool, exclude: Node3D = null) -> Node3D:
 	var forward := player.get_facing_direction()
 	var best: Node3D = null
 	var best_distance := max_range
 
 	for body in _iter_targets(player):
-		if body == player:
+		if body == player or body == exclude:
 			continue
 		if not _is_damageable(player, body):
 			continue
@@ -350,6 +405,21 @@ func _find_nearest(player: Player, max_range: float, front_only: bool) -> Node3D
 			best_distance = distance
 			best = body
 
+	return best
+
+
+func _find_nearest_with_los(player: Player, max_range: float) -> Node3D:
+	var best: Node3D = null
+	var best_distance := max_range
+	for body in _iter_targets(player):
+		if body == player or not _is_damageable(player, body):
+			continue
+		if not _has_line_of_sight(player, body):
+			continue
+		var distance := _flat_distance(player, body)
+		if distance < best_distance:
+			best_distance = distance
+			best = body
 	return best
 
 
@@ -451,3 +521,29 @@ func _flat_distance(player: Player, body: Node3D) -> float:
 		body.global_position.x - player.global_position.x,
 		body.global_position.z - player.global_position.z
 	).length()
+
+
+func _has_line_of_sight(player: Player, body: Node3D) -> bool:
+	var space_state := player.get_world_3d().direct_space_state
+	var origin := player.global_position + Vector3.UP * 0.95
+	var target := player.get_enemy_track_point(body)
+	var query := PhysicsRayQueryParameters3D.create(origin, target)
+	query.exclude = [player.get_rid()]
+	query.collide_with_areas = false
+	query.collision_mask = 1
+	var hit := space_state.intersect_ray(query)
+	if hit.is_empty():
+		return true
+	return _ray_hit_is_body(hit, body)
+
+
+func _ray_hit_is_body(hit: Dictionary, body: Node3D) -> bool:
+	if not hit.has("collider"):
+		return false
+	var collider: Object = hit.collider
+	if collider == body:
+		return true
+	if collider is Node:
+		var node := collider as Node
+		return body == node or body.is_ancestor_of(node)
+	return false

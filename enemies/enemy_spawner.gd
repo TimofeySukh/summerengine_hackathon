@@ -53,7 +53,7 @@ func kill_all_enemies() -> void:
 	_refresh_squad_slots()
 
 
-func spawn_enemy() -> void:
+func spawn_enemy() -> bool:
 	var player := get_tree().get_first_node_in_group("player") as Node3D
 	var origin := Vector3.ZERO
 	if player != null:
@@ -61,7 +61,7 @@ func spawn_enemy() -> void:
 
 	var spawn_position: Variant = _pick_spawn_position(origin, player)
 	if spawn_position == null:
-		return
+		return false
 
 	var enemy := ENEMY_SCENE.instantiate() as Node3D
 	add_child(enemy)
@@ -71,7 +71,12 @@ func spawn_enemy() -> void:
 		if not enemy.defeated.is_connected(_run_director.notify_enemy_defeated):
 			enemy.defeated.connect(_run_director.notify_enemy_defeated)
 
+	for node in get_tree().get_nodes_in_group("player"):
+		if node.has_method("on_enemy_spawned"):
+			node.on_enemy_spawned(enemy)
+
 	_refresh_squad_slots()
+	return true
 
 
 func _pick_spawn_position(origin: Vector3, player: Node3D) -> Variant:
@@ -135,7 +140,11 @@ func _is_spawn_position_clear(position: Vector3) -> bool:
 		var collider: Object = hit.collider
 		if collider is CharacterBody3D and collider.is_in_group("player"):
 			continue
-		return false
+		# Floor and arena boundary walls are StaticBody3D — ignore them.
+		if collider is StaticBody3D:
+			continue
+		if collider is CharacterBody3D:
+			return false
 
 	var floor_origin := position + Vector3.UP * 2.0
 	var floor_target := position + Vector3.DOWN * 4.0

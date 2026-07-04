@@ -5,7 +5,7 @@ extends Node3D
 
 signal slash_struck
 
-const Y_LEVEL_EPS := 0.035
+const Y_LEVEL_EPS := 0.10
 
 @onready var _camera: Camera3D = get_parent() as Camera3D
 @onready var _blade_a: WebcamKatana = $BladeA
@@ -18,6 +18,8 @@ var _prev_right := Vector2(-1.0, -1.0)
 func _ready() -> void:
 	_blade_a.setup(_camera, WebcamKatana.HandSlot.RIGHT)
 	_blade_b.setup(_camera, WebcamKatana.HandSlot.LEFT)
+	_blade_a.slash_struck.connect(_emit_slash_struck)
+	_blade_b.slash_struck.connect(_emit_slash_struck)
 	disable()
 
 
@@ -53,14 +55,17 @@ func update_from_bridge(delta: float, has_hands: bool, left: Vector2, right: Vec
 		_blade_b.set_tracking(0.5, 0.5, 0.0)
 		return
 
+	var hands_level := absf(left.y - right.y) <= Y_LEVEL_EPS
+	var shared_y := (left.y + right.y) * 0.5
+	var left_y := shared_y if hands_level else left.y
+	var right_y := shared_y if hands_level else right.y
+
 	var right_swing := _swing_amount(right, _prev_right, delta)
 	var left_swing := _swing_amount(left, _prev_left, delta)
-	var right_tilt := _side_tilt_amount(right, _prev_right, delta)
-	var left_tilt := _side_tilt_amount(left, _prev_left, delta)
+	var right_tilt := 0.0 if hands_level else _side_tilt_amount(right, _prev_right, delta)
+	var left_tilt := 0.0 if hands_level else _side_tilt_amount(left, _prev_left, delta)
 	_prev_left = left
 	_prev_right = right
-	var left_y := _matched_screen_y(left.y, right.y)
-	var right_y := _matched_screen_y(right.y, left.y)
 	# Physical right wrist -> blade A, physical left -> blade B (1:1 camera screen coords).
 	_blade_a.set_tracking(right.x, right_y, right_swing, right_tilt)
 	_blade_b.set_tracking(left.x, left_y, left_swing, left_tilt)
@@ -71,6 +76,9 @@ func slash_camera_hand(hand: String) -> void:
 		_blade_b.trigger_hit()
 	else:
 		_blade_a.trigger_hit()
+
+
+func _emit_slash_struck() -> void:
 	slash_struck.emit()
 
 
@@ -82,10 +90,10 @@ func _swing_amount(current: Vector2, previous: Vector2, delta: float) -> float:
 	if previous.x < 0.0 or delta <= 0.0:
 		return 0.0
 	var vel := (current - previous) / delta
-	if vel.length() < 0.45:
+	if vel.length() < 0.32:
 		return 0.0
-	var down := clampf(vel.y / 2.5, 0.0, 1.0)
-	var speed := clampf(vel.length() / 3.2, 0.0, 1.0)
+	var down := clampf(vel.y / 2.0, 0.0, 1.0)
+	var speed := clampf(vel.length() / 2.6, 0.0, 1.0)
 	return speed * (0.25 + 0.75 * down)
 
 
@@ -94,12 +102,6 @@ func _side_tilt_amount(current: Vector2, previous: Vector2, delta: float) -> flo
 		return 0.0
 	var vel := (current - previous) / delta
 	var horizontal := vel.x
-	if absf(horizontal) < 0.3:
+	if absf(horizontal) < 0.18:
 		return 0.0
-	return clampf(horizontal * 1.05, -0.85, 0.85)
-
-
-func _matched_screen_y(y: float, other_y: float) -> float:
-	if absf(y - other_y) <= Y_LEVEL_EPS:
-		return (y + other_y) * 0.5
-	return y
+	return clampf(horizontal * 1.45, -0.85, 0.85)

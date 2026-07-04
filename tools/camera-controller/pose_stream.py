@@ -491,9 +491,11 @@ def main() -> int:
 
                     if not calibrator.blocks_tracking:
                         hand_frame = compute_hand_frame(last_landmarks)
-                        center = compute_torso_center(last_landmarks)
-                        if hand_frame is not None and bounds_tracker is not None and center is not None:
-                            hand_frame = bounds_tracker.update(hand_frame, center)
+                        # Game bridge: raw wrist image coords (0–1) for 1:1 screen mirroring.
+                        if game_bridge is None:
+                            center = compute_torso_center(last_landmarks)
+                            if hand_frame is not None and bounds_tracker is not None and center is not None:
+                                hand_frame = bounds_tracker.update(hand_frame, center)
                         if game_bridge is not None and hand_frame is not None:
                             game_bridge.send_hands(hand_frame)
                         slash_event = slash_detector.update(
