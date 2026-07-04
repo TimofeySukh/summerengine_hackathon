@@ -16,18 +16,18 @@ func _process(_delta: float) -> void:
 	if not visible:
 		return
 
-	if CameraInputBridge.has_preview():
-		_feed.texture = CameraInputBridge.get_preview_texture()
-		_status.text = "LIVE"
+	if WebcamLauncher.is_running():
+		_status.text = "WINDOW"
 		_status.modulate = Color(0.55, 1.0, 0.65, 1.0)
-	elif _feed.get_frames_decoded() > 0:
+	elif CameraInputBridge.has_preview():
+		_feed.texture = CameraInputBridge.get_preview_texture()
 		_status.text = "LIVE"
 		_status.modulate = Color(0.55, 1.0, 0.65, 1.0)
 	elif CameraInputBridge.is_stream_active():
 		_status.text = "TRACKING"
 		_status.modulate = Color(0.7, 0.85, 1.0, 1.0)
 	else:
-		_status.text = "CONNECTING"
+		_status.text = "STARTING"
 		_status.modulate = Color(1.0, 0.85, 0.45, 1.0)
 
 
@@ -35,6 +35,7 @@ func _apply_mode() -> void:
 	var want := ControlMode.is_webcam()
 	visible = want
 	if want:
+		# HTTP fallback if UDP preview ever works; primary view is the OpenCV window.
 		_feed.start_stream(WebcamConfig.STREAM_URL)
 	else:
 		_feed.stop_stream()

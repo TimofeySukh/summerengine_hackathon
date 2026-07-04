@@ -20,9 +20,8 @@ if [[ "${1:-}" == "--setup-only" ]]; then
 fi
 
 ARGS=(--game-bridge)
-if [[ "${1:-}" != "--display" ]]; then
+if [[ "${1:-}" == "--no-display" || "${1:-}" == "--headless" ]]; then
   ARGS+=(--no-display)
-else
   shift
 fi
 

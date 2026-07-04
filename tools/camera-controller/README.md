@@ -17,12 +17,11 @@ The pose model (`models/pose_landmarker_lite.task`) is bundled; other variants d
 
 **For Heat Wave (webcam control mode):**
 
-Select **Webcam** on the main menu and press Play — the game auto-starts pose tracking and shows the live feed in-game (bottom-right PiP).
-
-Manual debug preview with skeleton overlay (separate OpenCV window):
+Select **Webcam** on the main menu and press Play — a **Katana Pose** window opens automatically with the live camera feed and skeleton overlay.
 
 ```bash
-./run_for_game.sh --display
+./run_for_game.sh          # display ON (default)
+./run_for_game.sh --headless  # no OpenCV window
 ```
 
 **Standalone preview (arrow keys only, no game):**
