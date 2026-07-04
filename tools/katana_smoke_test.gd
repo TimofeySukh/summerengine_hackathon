@@ -15,11 +15,13 @@ func _init() -> void:
 	for label in ["KatanaVisualLeft", "KatanaVisualRight"]:
 		var node: Node3D = player.get_node("CameraController/PlayerCamera/" + label)
 		var mesh: MeshInstance3D = node.get_node("SlashPivot/Katana/Katana_Mesh")
-		var center := (mesh.global_transform * mesh.get_aabb()).get_center()
+		var aabb := mesh.global_transform * mesh.get_aabb()
+		var center := aabb.get_center()
 		var screen: Vector2 = cam.unproject_position(center)
 		var on_screen := screen.x >= 0.0 and screen.x <= VP.x and screen.y >= 0.0 and screen.y <= VP.y
-		print(label, " screen=", screen, " on_screen=", on_screen)
-		ok = ok and on_screen
+		var vertical := aabb.size.y / maxf(aabb.size.x, 0.001) > 1.1
+		print(label, " screen=", screen, " on_screen=", on_screen, " vertical=", vertical)
+		ok = ok and on_screen and vertical
 
 	print("RESULT:", "PASS" if ok else "FAIL")
 	quit(0 if ok else 2)

@@ -5,8 +5,6 @@ enum CAMERA_PIVOT { OVER_SHOULDER, THIRD_PERSON }
 @export var invert_mouse_y := false
 @export_range(0.0, 1.0) var mouse_sensitivity := 0.25
 @export_range(0.0, 8.0) var joystick_sensitivity := 2.0
-@export var tilt_upper_limit := deg_to_rad(-60.0)
-@export var tilt_lower_limit := deg_to_rad(60.0)
 
 @onready var camera: Camera3D = $PlayerCamera
 @onready var _over_shoulder_pivot: Node3D = $CameraOverShoulderPivot
@@ -19,7 +17,6 @@ var _aim_collider: Node
 var _pivot: Node3D
 var _current_pivot_type: CAMERA_PIVOT
 var _rotation_input: float
-var _tilt_input: float
 var _mouse_input := false
 var _offset: Vector3
 var _anchor: CharacterBody3D
@@ -29,7 +26,6 @@ func _unhandled_input(event: InputEvent) -> void:
 	_mouse_input = event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED
 	if _mouse_input:
 		_rotation_input = -event.relative.x * mouse_sensitivity
-		_tilt_input = -event.relative.y * mouse_sensitivity
 
 
 func _process(delta: float) -> void:
@@ -37,10 +33,6 @@ func _process(delta: float) -> void:
 		return
 
 	_rotation_input += Input.get_action_raw_strength("camera_left") - Input.get_action_raw_strength("camera_right")
-	_tilt_input += Input.get_action_raw_strength("camera_up") - Input.get_action_raw_strength("camera_down")
-
-	if invert_mouse_y:
-		_tilt_input *= -1
 
 	if _camera_raycast.is_colliding():
 		_aim_target = _camera_raycast.get_collision_point()
@@ -52,9 +44,8 @@ func _process(delta: float) -> void:
 	# First-person camera follows the character directly, including jumps.
 	global_position = _anchor.global_position + _offset
 
-	# Rotates camera using euler rotation
-	_euler_rotation.x += _tilt_input * delta
-	_euler_rotation.x = clamp(_euler_rotation.x, tilt_lower_limit, tilt_upper_limit)
+	# Horizontal look only — pitch is locked.
+	_euler_rotation.x = 0.0
 	_euler_rotation.y += _rotation_input * delta
 
 	transform.basis = Basis.from_euler(_euler_rotation)
@@ -63,7 +54,6 @@ func _process(delta: float) -> void:
 	camera.rotation.z = 0
 
 	_rotation_input = 0.0
-	_tilt_input = 0.0
 
 
 func setup(anchor: CharacterBody3D) -> void:

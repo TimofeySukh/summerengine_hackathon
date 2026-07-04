@@ -137,8 +137,6 @@ shape = SubResource("CapsuleShape3D_8x2xm")
 top_level = true
 script = ExtResource("3_qrkly")
 invert_mouse_y = false
-tilt_upper_limit = 1.25
-tilt_lower_limit = -1.25
 
 [node name="CameraOverShoulderPivot" type="Marker3D" parent="CameraController"]
 transform = Transform3D(-0.994522, 0.0400013, -0.0965717, 0, 0.92388, 0.382683, 0.104528, 0.380587, -0.918818, -0.848491, 3.48765, -2.32639)
