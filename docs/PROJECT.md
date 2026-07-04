@@ -94,4 +94,4 @@ Do not create assets from scratch (placeholder boxes, procedural meshes, etc.). 
 - **Implemented surveillance slice:** removed WASD/jump locomotion; single `SurveillanceMount` CCTV feed; mouse pan, M/N jog, LMB slash from camera ray.
 - **Reverted surveillance slice** back to first-person WASD + mouse look per user request.
 - Reworked katana attack from rotation swing to straight forward thrust with linear trail VFX.
-- Moved the first-person katana viewmodel farther right in the camera frame.
+- Moved the first-person katana viewmodel to the right side of the camera frame.
