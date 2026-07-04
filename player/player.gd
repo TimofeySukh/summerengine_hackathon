@@ -55,6 +55,7 @@ enum WEAPON_TYPE { DEFAULT, GRENADE }
 @onready var _health_bar: ProgressBar = %HealthBar
 @onready var _step_sound: AudioStreamPlayer3D = $StepSound
 @onready var _landing_sound: AudioStreamPlayer3D = $LandingSound
+@onready var _combat_feel: Node = $CombatFeel
 
 @onready var _equipped_weapon: WEAPON_TYPE = WEAPON_TYPE.DEFAULT
 @onready var _move_direction := Vector3.ZERO
@@ -88,6 +89,7 @@ func _ready() -> void:
 	_character_skin.stepped.connect(play_foot_step_sound)
 	_katana_left.slash_struck.connect(perform_katana_hit)
 	_katana_right.slash_struck.connect(perform_katana_hit)
+	_combat_feel.setup(_camera_controller.camera)
 	_update_health_ui()
 
 
@@ -404,6 +406,7 @@ func respawn() -> void:
 	_katana_right.reset_pose()
 	_health = max_health
 	_update_health_ui()
+	_combat_feel.reset_feedback()
 
 
 func _heal_from_kill() -> void:
@@ -564,9 +567,13 @@ func _damage_katana_target(target: Object, hit_position: Vector3, direction: Vec
 	var force := direction * 14.0
 	var was_alive: bool = body.has_method("is_alive") and body.is_alive()
 	body.damage(impact_point, force)
-	if was_alive and body.has_method("is_alive") and not body.is_alive():
+	var killed: bool = was_alive and body.has_method("is_alive") and not body.is_alive()
+	if killed:
 		_heal_from_kill()
-	return true
+		_combat_feel.play_kill_feedback()
+	elif was_alive:
+		_combat_feel.play_slash_feedback()
+	return killed
 
 
 func _orient_character_to_direction(direction: Vector3, delta: float) -> void:

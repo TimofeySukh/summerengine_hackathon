@@ -1,0 +1,175 @@
+[gd_scene format=3 uid="uid://bhhpqhgm5asb5"]
+
+[ext_resource type="Script" path="res://ui/survival_hud.gd" id="1_hud"]
+[ext_resource type="FontFile" uid="uid://ch2aef1jex81f" path="res://demo_page/fonts/Montserrat-Bold.ttf" id="2_font_bold"]
+[ext_resource type="FontFile" uid="uid://t50djx4didf7" path="res://demo_page/fonts/Montserrat-Medium.ttf" id="3_font_medium"]
+
+[node name="SurvivalHUD" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_hud")
+
+[node name="TopBar" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 28.0
+offset_top = 22.0
+offset_right = -28.0
+offset_bottom = 92.0
+grow_horizontal = 2
+theme_override_constants/separation = 18
+
+[node name="WavePanel" type="PanelContainer" parent="TopBar"]
+custom_minimum_size = Vector2(180, 0)
+layout_mode = 2
+
+[node name="WaveVBox" type="VBoxContainer" parent="TopBar/WavePanel"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="WaveLabel" type="Label" parent="TopBar/WavePanel/WaveVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.68, 0.92, 1)
+theme_override_fonts/font = ExtResource("3_font_medium")
+theme_override_font_sizes/font_size = 14
+text = "WAVE"
+
+[node name="WaveValue" type="Label" parent="TopBar/WavePanel/WaveVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.95, 0.88, 1)
+theme_override_fonts/font = ExtResource("2_font_bold")
+theme_override_font_sizes/font_size = 34
+text = "0"
+
+[node name="WaveRemaining" type="Label" parent="TopBar/WavePanel/WaveVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.78, 0.9, 0.85)
+theme_override_fonts/font = ExtResource("3_font_medium")
+theme_override_font_sizes/font_size = 13
+text = "incoming"
+
+[node name="Spacer" type="Control" parent="TopBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="StatsPanel" type="HBoxContainer" parent="TopBar"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="KillsPanel" type="PanelContainer" parent="TopBar/StatsPanel"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+
+[node name="KillsVBox" type="VBoxContainer" parent="TopBar/StatsPanel/KillsPanel"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="KillsLabel" type="Label" parent="TopBar/StatsPanel/KillsPanel/KillsVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.35, 0.28, 1)
+theme_override_fonts/font = ExtResource("3_font_medium")
+theme_override_font_sizes/font_size = 14
+text = "KILLS"
+
+[node name="KillsValue" type="Label" parent="TopBar/StatsPanel/KillsPanel/KillsVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.95, 0.88, 1)
+theme_override_fonts/font = ExtResource("2_font_bold")
+theme_override_font_sizes/font_size = 28
+text = "0"
+
+[node name="TimePanel" type="PanelContainer" parent="TopBar/StatsPanel"]
+custom_minimum_size = Vector2(120, 0)
+layout_mode = 2
+
+[node name="TimeVBox" type="VBoxContainer" parent="TopBar/StatsPanel/TimePanel"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="TimeLabel" type="Label" parent="TopBar/StatsPanel/TimePanel/TimeVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 0.68, 0.92, 1)
+theme_override_fonts/font = ExtResource("3_font_medium")
+theme_override_font_sizes/font_size = 14
+text = "TIME"
+
+[node name="TimeValue" type="Label" parent="TopBar/StatsPanel/TimePanel/TimeVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.95, 0.88, 1)
+theme_override_fonts/font = ExtResource("2_font_bold")
+theme_override_font_sizes/font_size = 28
+text = "0:00"
+
+[node name="BestValue" type="Label" parent="."]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -320.0
+offset_top = 96.0
+offset_right = -28.0
+offset_bottom = 122.0
+grow_horizontal = 0
+theme_override_colors/font_color = Color(0.62, 0.7, 0.86, 0.9)
+theme_override_fonts/font = ExtResource("3_font_medium")
+theme_override_font_sizes/font_size = 15
+text = "Best  —"
+horizontal_alignment = 2
+
+[node name="IntermissionBanner" type="Control" parent="."]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -280.0
+offset_top = -120.0
+offset_right = 280.0
+offset_bottom = 20.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BannerPanel" type="PanelContainer" parent="IntermissionBanner"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BannerVBox" type="VBoxContainer" parent="IntermissionBanner/BannerPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="BannerTitle" type="Label" parent="IntermissionBanner/BannerPanel/BannerVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.92, 0.72, 1)
+theme_override_fonts/font = ExtResource("2_font_bold")
+theme_override_font_sizes/font_size = 38
+text = "WAVE CLEAR"
+horizontal_alignment = 1
+
+[node name="BannerSubtitle" type="Label" parent="IntermissionBanner/BannerPanel/BannerVBox"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.8, 0.95, 1)
+theme_override_fonts/font = ExtResource("3_font_medium")
+theme_override_font_sizes/font_size = 18
+text = "Catch your breath."
+horizontal_alignment = 1

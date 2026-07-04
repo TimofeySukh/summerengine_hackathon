@@ -2,33 +2,47 @@ extends Node3D
 
 const ENEMY_SCENE := preload("res://enemies/humanoid_chaser.tscn")
 
-@export var spawn_interval := 1.0
-@export var max_alive := 14
 @export var spawn_radius := 24.0
 @export var spawn_y := 0.2
 @export var spawn_fov := 75.0
 @export var min_spawn_distance := 10.0
+@export var squad_refresh_interval := 0.25
 
-var _spawn_timer := 0.0
-var _spawn_index := 0
+var _run_director: Node = null
+var _slot_refresh_timer := 0.0
 
 
 func _ready() -> void:
-	for i in 5:
-		_spawn_enemy()
+	add_to_group("enemy_spawner")
+
+
+func set_run_director(director: Node) -> void:
+	_run_director = director
 
 
 func _process(delta: float) -> void:
-	_spawn_timer += delta
-	if _spawn_timer < spawn_interval:
-		return
-
-	_spawn_timer = 0.0
-	if get_child_count() < max_alive:
-		_spawn_enemy()
+	_slot_refresh_timer += delta
+	if _slot_refresh_timer >= squad_refresh_interval:
+		_slot_refresh_timer = 0.0
+		_refresh_squad_slots()
 
 
-func _spawn_enemy() -> void:
+func clear_all_enemies() -> void:
+	for child in get_children():
+		if child.has_method("is_alive"):
+			child.queue_free()
+	_refresh_squad_slots()
+
+
+func get_alive_count() -> int:
+	var count := 0
+	for child in get_children():
+		if child.has_method("is_alive") and child.is_alive():
+			count += 1
+	return count
+
+
+func spawn_enemy() -> void:
 	var player := get_tree().get_first_node_in_group("player") as Node3D
 	var origin := Vector3.ZERO
 	if player != null:
@@ -67,5 +81,45 @@ func _spawn_enemy() -> void:
 	add_child(enemy)
 	enemy.global_position = spawn_position
 
+	if enemy.has_signal("defeated") and _run_director != null:
+		if not enemy.defeated.is_connected(_run_director.notify_enemy_defeated):
+			enemy.defeated.connect(_run_director.notify_enemy_defeated)
+
+	_refresh_squad_slots()
 
 
+func _refresh_squad_slots() -> void:
+	var player := get_tree().get_first_node_in_group("player") as Node3D
+	var squad: Array[Node] = []
+
+	for child in get_children():
+		if not child.has_method("set_squad_slot") or not child.has_method("is_alive"):
+			continue
+		if not child.is_alive():
+			continue
+		squad.append(child)
+
+	var count := squad.size()
+	if count == 0:
+		return
+
+	if player != null:
+		squad.sort_custom(func(a: Node, b: Node) -> bool:
+			var pos_a := (a as Node3D).global_position
+			var pos_b := (b as Node3D).global_position
+			var dist_a: float = pos_a.distance_squared_to(player.global_position)
+			var dist_b: float = pos_b.distance_squared_to(player.global_position)
+			return dist_a < dist_b
+		)
+
+	var ring_offset := 0.0
+	if player != null:
+		ring_offset = atan2(
+			-player.global_transform.basis.z.z,
+			-player.global_transform.basis.z.x
+		)
+
+	for i in count:
+		var slot_angle := ring_offset + TAU * float(i) / float(count)
+		var can_commit := i == 0
+		squad[i].set_squad_slot(i, count, slot_angle, can_commit)

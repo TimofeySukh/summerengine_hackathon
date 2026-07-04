@@ -52,6 +52,9 @@ func _process(delta: float) -> void:
 
 	camera.global_transform = _pivot.global_transform
 	camera.rotation.z = 0
+	if camera.has_method("update_shake"):
+		camera.update_shake(delta)
+		camera.apply_shake_offset()
 
 	_rotation_input = 0.0
 

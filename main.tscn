@@ -1,10 +1,11 @@
 [gd_scene format=3 uid="uid://vmbppkwmx2xk"]
 
 [ext_resource type="PackedScene" uid="uid://ciqrpd5675boy" path="res://player/player.tscn" id="1_player"]
-[ext_resource type="PackedScene" path="res://enemies/humanoid_chaser.tscn" id="2_enemy"]
 [ext_resource type="Script" uid="uid://blrf6nremkb0r" path="res://enemies/enemy_spawner.gd" id="3_spawner"]
 [ext_resource type="PackedScene" uid="uid://c8pausemenu01" path="res://ui/pause_menu.tscn" id="4_pause"]
 [ext_resource type="PackedScene" uid="uid://c8deathscreen01" path="res://ui/death_screen.tscn" id="5_death"]
+[ext_resource type="Script" path="res://game/run_director.gd" id="6_director"]
+[ext_resource type="PackedScene" uid="uid://c8survivalhud01" path="res://ui/survival_hud.tscn" id="7_hud"]
 
 [sub_resource type="Environment" id="Environment_night"]
 background_mode = 1
@@ -144,24 +145,15 @@ omni_range = 18.0
 
 [node name="Enemies" type="Node3D" parent="." unique_id=187095548]
 script = ExtResource("3_spawner")
-spawn_interval = 1.0
-max_alive = 18
 spawn_radius = 26.0
 
-[node name="Chaser1" parent="Enemies" unique_id=1707340340 instance=ExtResource("2_enemy")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0.2, -10)
+[node name="RunDirector" type="Node" parent="."]
+script = ExtResource("6_director")
 
-[node name="Chaser2" parent="Enemies" unique_id=1386364896 instance=ExtResource("2_enemy")]
-transform = Transform3D(0.707107, 0, 0.707107, 0, 1, 0, -0.707107, 0, 0.707107, 8, 0.2, -12)
+[node name="SurvivalUILayer" type="CanvasLayer" parent="."]
+layer = 5
 
-[node name="Chaser3" parent="Enemies" unique_id=1292271258 instance=ExtResource("2_enemy")]
-transform = Transform3D(-0.258819, 0, 0.965926, 0, 1, 0, -0.965926, 0, -0.258819, 0, 0.2, -17)
-
-[node name="Chaser4" parent="Enemies" unique_id=1766083206 instance=ExtResource("2_enemy")]
-transform = Transform3D(0.866025, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866025, -13, 0.2, 2)
-
-[node name="Chaser5" parent="Enemies" unique_id=1045315522 instance=ExtResource("2_enemy")]
-transform = Transform3D(0.866025, 0, 0.5, 0, 1, 0, -0.5, 0, 0.866025, 13, 0.2, 1)
+[node name="SurvivalHUD" parent="SurvivalUILayer" instance=ExtResource("7_hud")]
 
 [node name="PauseMenu" parent="." instance=ExtResource("4_pause")]
 

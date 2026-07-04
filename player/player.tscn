@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3 uid="uid://ciqrpd5675boy"]
+[gd_scene load_steps=19 format=3 uid="uid://ciqrpd5675boy"]
 
 [ext_resource type="Script" uid="uid://gofa4kyvcacj" path="res://player/player.gd" id="1_rvo1c"]
 [ext_resource type="PackedScene" uid="uid://b2ew46dlu7u7x" path="res://player/grenade_launcher.tscn" id="3_54qc4"]
@@ -8,6 +8,10 @@
 [ext_resource type="PackedScene" uid="uid://c8katana1visual" path="res://player/katana/katana_visual.tscn" id="5_katana"]
 [ext_resource type="AudioStream" uid="uid://bx0t7f2nuk2lr" path="res://player/sounds/03_step_grass_03.wav" id="10_wx4h4"]
 [ext_resource type="AudioStream" uid="uid://cbcb2d63weegs" path="res://player/sounds/45_landing_01.wav" id="11_3s4i7"]
+[ext_resource type="Script" path="res://player/camera_shake.gd" id="12_camshake"]
+[ext_resource type="Script" path="res://player/combat_feel.gd" id="13_combatfeel"]
+[ext_resource type="AudioStream" path="res://enemies/sounds/mechanical_2.wav" id="14_slash"]
+[ext_resource type="AudioStream" path="res://enemies/smoke_puff/Sounds/poof_2.wav" id="15_kill"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_8x2xm"]
 
@@ -155,6 +159,7 @@ top_level = true
 attributes = SubResource("CameraAttributesPractical_2ooex")
 fov = 50.0
 near = 0.01
+script = ExtResource("12_camshake")
 
 [node name="CameraRayCast" type="RayCast3D" parent="CameraController/PlayerCamera"]
 transform = Transform3D(1, 0, -7.10543e-15, 0, 1, 0, 0, 0, 1, 0, 0, 0)
@@ -248,3 +253,14 @@ volume_db = 1.0
 [node name="LandingSound" type="AudioStreamPlayer3D" parent="."]
 stream = ExtResource("11_3s4i7")
 volume_db = 1.0
+
+[node name="CombatFeel" type="Node" parent="."]
+script = ExtResource("13_combatfeel")
+
+[node name="SlashSound" type="AudioStreamPlayer" parent="CombatFeel"]
+stream = ExtResource("14_slash")
+volume_db = -4.0
+
+[node name="KillSound" type="AudioStreamPlayer" parent="CombatFeel"]
+stream = ExtResource("15_kill")
+volume_db = 1.5
