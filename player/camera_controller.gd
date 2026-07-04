@@ -21,8 +21,13 @@ var _mouse_input := false
 var _offset: Vector3
 var _anchor: CharacterBody3D
 var _euler_rotation: Vector3
+var _webcam_yaw_baseline := NAN
+var _webcam_spawn_yaw := 0.0
+
 
 func _unhandled_input(event: InputEvent) -> void:
+	if ControlMode.is_webcam():
+		return
 	_mouse_input = event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED
 	if _mouse_input:
 		_rotation_input = -event.relative.x * mouse_sensitivity
@@ -32,7 +37,8 @@ func _process(delta: float) -> void:
 	if not _anchor:
 		return
 
-	_rotation_input += Input.get_action_raw_strength("camera_left") - Input.get_action_raw_strength("camera_right")
+	if ControlMode.is_keyboard():
+		_rotation_input += Input.get_action_raw_strength("camera_left") - Input.get_action_raw_strength("camera_right")
 
 	if _camera_raycast.is_colliding():
 		_aim_target = _camera_raycast.get_collision_point()
@@ -46,7 +52,8 @@ func _process(delta: float) -> void:
 
 	# Horizontal look only — pitch is locked.
 	_euler_rotation.x = 0.0
-	_euler_rotation.y += _rotation_input * delta
+	if ControlMode.is_keyboard():
+		_euler_rotation.y += _rotation_input * delta
 
 	transform.basis = Basis.from_euler(_euler_rotation)
 
@@ -95,3 +102,16 @@ func get_aim_collider() -> Node:
 		return _aim_collider
 	else:
 		return null
+
+
+func reset_webcam_yaw_baseline() -> void:
+	_webcam_yaw_baseline = NAN
+
+
+func apply_webcam_torso_yaw(torso_deg: float, delta: float) -> void:
+	if isnan(_webcam_yaw_baseline):
+		_webcam_yaw_baseline = torso_deg
+		_webcam_spawn_yaw = _euler_rotation.y
+
+	var offset_rad := deg_to_rad((torso_deg - _webcam_yaw_baseline) * 1.8)
+	_euler_rotation.y = lerp_angle(_euler_rotation.y, _webcam_spawn_yaw + offset_rad, delta * 10.0)

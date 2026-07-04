@@ -75,11 +75,15 @@ var _lunge_end := Vector3.ZERO
 var _lunge_elapsed := 0.0
 var _lunge_target: Node3D = null
 var _is_dead := false
+var _webcam_warned := false
 
 
 func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	_camera_controller.call_deferred("setup", self)
+	if ControlMode.is_webcam():
+		CameraInputBridge.reset_session()
+		_camera_controller.reset_webcam_yaw_baseline()
 	_grenade_aim_controller.visible = false
 	weapon_switched.emit(WEAPON_TYPE.keys()[0])
 
@@ -143,13 +147,21 @@ func _physics_process(delta: float) -> void:
 		_grenade_aim_controller.from_look_position = global_position
 		_ui_aim_recticle.visible = false
 
-	if is_attacking and is_just_attacking:
+	if is_attacking and is_just_attacking and ControlMode.is_keyboard():
 		attack()
 
-	if Input.is_action_just_pressed("katana_slash_left"):
-		_slash_with_katana(_katana_left)
-	if Input.is_action_just_pressed("katana_slash_right"):
-		_slash_with_katana(_katana_right)
+	if ControlMode.is_keyboard():
+		if Input.is_action_just_pressed("katana_slash_left"):
+			_slash_with_katana(_katana_left)
+		if Input.is_action_just_pressed("katana_slash_right"):
+			_slash_with_katana(_katana_right)
+	else:
+		_poll_webcam_slash()
+		if CameraInputBridge.has_torso_yaw():
+			_camera_controller.apply_webcam_torso_yaw(CameraInputBridge.get_torso_yaw(), delta)
+		elif not _webcam_warned and not CameraInputBridge.is_stream_active():
+			_webcam_warned = true
+			push_warning("Webcam mode: start tools/camera-controller/pose_stream.py --game-bridge")
 
 	velocity.y += _gravity * delta
 
@@ -184,7 +196,18 @@ func _physics_process(delta: float) -> void:
 
 
 func attack() -> void:
+	if ControlMode.is_webcam():
+		return
 	_slash_with_katana(_katana_right)
+
+
+func _poll_webcam_slash() -> void:
+	var hand := CameraInputBridge.poll_slash()
+	match hand:
+		"left":
+			_slash_with_katana(_katana_left)
+		"right":
+			_slash_with_katana(_katana_right)
 
 
 func _slash_with_katana(katana: KatanaVisual) -> void:

@@ -17,6 +17,7 @@ from key_controller import ArrowKeyController
 from mjpeg_reader import MjpegStreamReader
 from slash_detector import SlashDetector, draw_slash_overlay, draw_wrist_markers
 from torso_tracker import TorsoTracker, draw_torso_widget
+from game_bridge import GameBridge
 from mediapipe.tasks import python as mp_tasks
 from mediapipe.tasks.python.vision import drawing_styles, drawing_utils
 from mediapipe.tasks.python import vision
@@ -144,6 +145,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--no-audio", action="store_true", help="Disable microphone playback")
     parser.add_argument("--no-keys", action="store_true", help="Disable arrow-key emulation")
     parser.add_argument(
+        "--game-bridge",
+        action="store_true",
+        help="Send slash/yaw events to Heat Wave over UDP (port 9847)",
+    )
+    parser.add_argument("--game-host", default="127.0.0.1")
+    parser.add_argument("--game-port", type=int, default=9847)
+    parser.add_argument(
+        "--also-keys",
+        action="store_true",
+        help="With --game-bridge, also press arrow keys locally",
+    )
+    parser.add_argument(
         "--key-cooldown",
         type=float,
         default=0.35,
@@ -259,7 +272,13 @@ def main() -> int:
         cooldown_s=args.slash_cooldown,
     )
     torso_tracker = TorsoTracker()
-    key_controller = None if args.no_keys else ArrowKeyController(cooldown_s=args.key_cooldown)
+    use_keys = not args.no_keys and not (args.game_bridge and not args.also_keys)
+    key_controller = None if not use_keys else ArrowKeyController(cooldown_s=args.key_cooldown)
+    game_bridge = None
+    if args.game_bridge:
+        game_bridge = GameBridge(host=args.game_host, port=args.game_port)
+        game_bridge.ping()
+        print(f"Game bridge: UDP -> {args.game_host}:{args.game_port}")
     audio_player = None
     if not args.no_audio:
         audio_player = BoardAudioPlayer(args.audio)
@@ -338,13 +357,19 @@ def main() -> int:
                 if last_landmarks is not None:
                     poses_since_report += 1
                     torso_yaw = torso_tracker.update(last_landmarks)
+                    if game_bridge is not None and torso_yaw is not None:
+                        game_bridge.send_yaw(torso_yaw)
                     slash_event = slash_detector.update(
                         last_landmarks,
                         frame_w=display_frame.shape[1],
                         frame_h=display_frame.shape[0],
                     )
-                    if slash_event is not None and key_controller is not None:
-                        key_controller.on_hand_slash(slash_event.hand)
+                    if slash_event is not None:
+                        if key_controller is not None:
+                            key_controller.on_hand_slash(slash_event.hand)
+                        if game_bridge is not None:
+                            game_bridge.send_slash(slash_event.hand)
+                            print(f"GAME slash {slash_event.hand} ({slash_event.direction})")
 
             if last_landmarks is not None or slash_detector.flashes:
                 frame = display_frame.copy()
@@ -368,6 +393,17 @@ def main() -> int:
                 keys_left=key_controller.total_left if key_controller else 0,
                 keys_right=key_controller.total_right if key_controller else 0,
             )
+            if game_bridge is not None:
+                cv2.putText(
+                    frame,
+                    f"game UDP {args.game_host}:{args.game_port}",
+                    (8, frame.shape[0] - 12),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.42,
+                    (120, 255, 160),
+                    1,
+                    cv2.LINE_AA,
+                )
 
             now = time.monotonic()
             if now - last_report >= 1.0:
@@ -388,6 +424,8 @@ def main() -> int:
         reader.stop()
         if audio_player is not None:
             audio_player.stop()
+        if game_bridge is not None:
+            game_bridge.close()
         if landmarker is not None:
             landmarker.close()
         if not args.no_display:
