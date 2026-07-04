@@ -147,3 +147,4 @@ The game currently uses the following tracks:
 - Added wave survival loop (`RunDirector`), neon HUD, death-screen run stats, and katana combat feel (shake, hit-stop, slash/kill audio).
 - Fetched the real-camera sidecar and set its default board API host to the Tailscale MagicDNS name `cph14.tailcfa96c.ts.net`.
 - Configured dynamic soundtrack switching: main menu plays "Dansez" by Fasion (`dansez_menu.mp3`) and gameplay plays the BattleBlock Theater theme (`battleblock_theater_menu.ogg`).
+- Designed the voice-triggered WAVE superpower: local wake-word model in the camera sidecar, UDP bridge event, and enemy-clear effect. Spec: `docs/superpowers/specs/2026-07-04-voice-wave-superpower-design.md`.
