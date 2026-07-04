@@ -18,6 +18,10 @@ enum WEAPON_TYPE { DEFAULT, GRENADE }
 @export var attack_lunge_stop_margin := 0.35
 ## Forward lunge distance when no enemy is targeted.
 @export var attack_lunge_fallback_distance := 1.5
+## Horizontal reach for katana hit detection.
+@export var katana_melee_range := 3.6
+## Half-angle of the katana hit cone in degrees.
+@export var katana_hit_half_arc_deg := 40.0
 ## Movement acceleration (how fast character achieve maximum speed)
 @export var acceleration := 4.0
 ## Jump impulse
@@ -68,6 +72,7 @@ var _lunge_active := false
 var _lunge_start := Vector3.ZERO
 var _lunge_end := Vector3.ZERO
 var _lunge_elapsed := 0.0
+var _lunge_target: Node3D = null
 var _is_dead := false
 
 
@@ -199,11 +204,13 @@ func perform_katana_hit() -> void:
 func _begin_attack_lunge() -> void:
 	_lunge_active = false
 	_lunge_elapsed = 0.0
+	_lunge_target = null
 
 	var lunge := _compute_attack_lunge()
 	if lunge.distance < 0.05:
 		return
 
+	_lunge_target = lunge.get("target")
 	_lunge_start = global_position
 	_lunge_end = global_position + lunge.direction * lunge.distance
 	_lunge_active = true
@@ -240,53 +247,62 @@ func _compute_attack_lunge() -> Dictionary:
 
 
 func _lunge_toward_node(target: Node3D, origin: Vector3) -> Dictionary:
-	var target_pos := target.global_position
+	var target_pos := _get_body_aim_point(target, origin.y)
 	if _camera_controller.get_aim_collider() == target:
 		target_pos = _camera_controller.get_aim_target()
-	target_pos.y = origin.y
+		target_pos.y = origin.y
 
 	var to_target := target_pos - origin
 	to_target.y = 0.0
 	var distance := to_target.length()
 	if distance < 0.05:
-		return {"direction": Vector3.ZERO, "distance": 0.0}
+		return {"direction": Vector3.ZERO, "distance": 0.0, "target": null}
 
 	var direction := to_target / distance
-	var travel := maxf(0.0, distance - attack_lunge_stop_margin)
-	return {"direction": direction, "distance": travel}
+	var stop_distance := attack_lunge_stop_margin + _get_body_collision_radius(target)
+	var travel := maxf(0.0, distance - stop_distance)
+	travel = _clamp_lunge_travel(origin, direction, travel)
+	return {"direction": direction, "distance": travel, "target": target}
 
 
 func _lunge_forward(origin: Vector3, distance: float) -> Dictionary:
-	var forward := _camera_controller.global_transform.basis * Vector3.FORWARD
-	forward.y = 0.0
+	var forward := _get_attack_forward()
 	if forward.length_squared() < 0.0001:
-		return {"direction": Vector3.ZERO, "distance": 0.0}
+		return {"direction": Vector3.ZERO, "distance": 0.0, "target": null}
 
-	forward = forward.normalized()
-	var travel := _raycast_lunge_distance(origin, forward, distance, [get_rid()])
-	return {"direction": forward, "distance": travel}
+	var travel := _clamp_lunge_travel(origin, forward, distance)
+	return {"direction": forward, "distance": travel, "target": null}
+
+
+func _clamp_lunge_travel(origin: Vector3, direction: Vector3, max_travel: float) -> float:
+	if max_travel <= 0.0:
+		return 0.0
+	return _raycast_lunge_distance(origin, direction, max_travel, [get_rid()])
 
 
 func _raycast_lunge_distance(origin: Vector3, direction: Vector3, max_distance: float, exclude: Array[RID] = []) -> float:
 	var space_state := get_world_3d().direct_space_state
-	var ray_origin := origin + Vector3.UP * 0.6
+	var ray_origin := origin + Vector3.UP * 0.85
 	var ray_target := ray_origin + direction * max_distance
 	var ray_query := PhysicsRayQueryParameters3D.create(ray_origin, ray_target)
 	ray_query.exclude = exclude
+	ray_query.collision_mask = 0xFFFFFFFF
 	var hit := space_state.intersect_ray(ray_query)
 	if hit.is_empty():
 		return max_distance
 
-	var hit_distance := ray_origin.distance_to(hit.position) - 0.35
+	var body_radius := 0.0
+	if hit.collider is Node3D:
+		body_radius = _get_body_collision_radius(hit.collider as Node3D)
+
+	var hit_distance := ray_origin.distance_to(hit.position) - body_radius - 0.15
 	return clampf(hit_distance, 0.0, max_distance)
 
 
 func _find_nearest_damageable(origin: Vector3, max_range: float) -> Node3D:
-	var forward := _camera_controller.global_transform.basis * Vector3.FORWARD
-	forward.y = 0.0
+	var forward := _get_attack_forward()
 	if forward.length_squared() < 0.0001:
 		return null
-	forward = forward.normalized()
 
 	var best: Node3D = null
 	var best_distance := max_range
@@ -368,6 +384,7 @@ func take_damage(amount: float) -> void:
 func _die() -> void:
 	_is_dead = true
 	_lunge_active = false
+	_lunge_target = null
 	velocity = Vector3.ZERO
 	player_died.emit()
 
@@ -382,6 +399,7 @@ func respawn() -> void:
 	velocity = Vector3.ZERO
 	_lunge_active = false
 	_lunge_elapsed = 0.0
+	_lunge_target = null
 	_katana_left.reset_pose()
 	_katana_right.reset_pose()
 	_health = max_health
@@ -404,34 +422,134 @@ func _update_health_ui() -> void:
 
 
 func _hit_with_katana() -> void:
-	var camera := _camera_controller.camera
-	var direction := (camera.global_transform.basis * Vector3.FORWARD).normalized()
-	var aim_target := _camera_controller.get_aim_target()
+	var forward := _get_flat_forward()
+	if forward.length_squared() < 0.0001:
+		return
+
+	var origin := global_position + Vector3.UP * 0.95
+	var hit_target := _find_best_melee_target(origin, forward)
+	if hit_target == null:
+		return
+
+	var hit_position := _get_body_aim_point(hit_target, origin.y)
+	_damage_katana_target(hit_target, hit_position, forward)
+
+
+func _find_best_melee_target(origin: Vector3, forward: Vector3) -> Node3D:
+	if _lunge_target != null and is_instance_valid(_lunge_target):
+		if _is_valid_melee_target(_lunge_target, origin, forward):
+			return _lunge_target
+
 	var aim_collider := _camera_controller.get_aim_collider()
+	if aim_collider is Node3D and _is_valid_melee_target(aim_collider as Node3D, origin, forward):
+		return aim_collider as Node3D
 
-	if aim_collider != null and _damage_katana_target(aim_collider, aim_target, direction):
-		return
+	var shape_hit := _query_melee_shape(origin, forward)
+	if shape_hit != null:
+		return shape_hit
 
-	var origin := camera.global_position
-	var ray_target := origin + direction * 8.0
+	var best: Node3D = null
+	var best_score := -INF
+	for node in get_tree().get_nodes_in_group("damageables"):
+		if node == self or not node is Node3D:
+			continue
+		var body := node as Node3D
+		if not _is_valid_melee_target(body, origin, forward):
+			continue
+		var score := _score_melee_target(body, origin, forward)
+		if score > best_score:
+			best_score = score
+			best = body
+
+	return best
+
+
+func _query_melee_shape(origin: Vector3, forward: Vector3) -> Node3D:
 	var space_state := get_world_3d().direct_space_state
+	var capsule := CapsuleShape3D.new()
+	capsule.radius = 0.95
+	capsule.height = 2.4
 
-	var ray_query := PhysicsRayQueryParameters3D.create(origin, ray_target)
-	ray_query.exclude = [get_rid()]
-	var ray_hit := space_state.intersect_ray(ray_query)
-	if ray_hit.has("collider") and _damage_katana_target(ray_hit.collider, ray_hit.position, direction):
-		return
-
-	var shape := SphereShape3D.new()
-	shape.radius = 1.4
+	var sweep_center := origin + forward * minf(katana_melee_range * 0.55, 1.8)
+	var basis := Basis.looking_at(forward, Vector3.UP)
 	var shape_query := PhysicsShapeQueryParameters3D.new()
-	shape_query.shape = shape
-	shape_query.transform = Transform3D(Basis(), aim_target)
+	shape_query.shape = capsule
+	shape_query.transform = Transform3D(basis, sweep_center)
 	shape_query.exclude = [get_rid()]
+	shape_query.collide_with_bodies = true
+	shape_query.collide_with_areas = false
 
+	var best: Node3D = null
+	var best_score := -INF
 	for hit in space_state.intersect_shape(shape_query, 16):
-		if hit.has("collider") and _damage_katana_target(hit.collider, aim_target, direction):
-			return
+		if not hit.has("collider") or not hit.collider is Node3D:
+			continue
+		var body := hit.collider as Node3D
+		if not _is_valid_melee_target(body, origin, forward):
+			continue
+		var score := _score_melee_target(body, origin, forward)
+		if score > best_score:
+			best_score = score
+			best = body
+
+	return best
+
+
+func _is_valid_melee_target(body: Node3D, origin: Vector3, forward: Vector3) -> bool:
+	if not body.is_in_group("damageables") or body == self:
+		return false
+	if body.has_method("is_alive") and not body.is_alive():
+		return false
+
+	var offset := body.global_position - origin
+	offset.y = 0.0
+	var distance := offset.length()
+	if distance > katana_melee_range or distance < 0.05:
+		return false
+
+	var facing := offset.normalized().dot(forward)
+	return facing >= cos(deg_to_rad(katana_hit_half_arc_deg))
+
+
+func _score_melee_target(body: Node3D, origin: Vector3, forward: Vector3) -> float:
+	var offset := body.global_position - origin
+	offset.y = 0.0
+	var distance := offset.length()
+	var facing := offset.normalized().dot(forward)
+	return facing * 3.0 - distance * 0.35
+
+
+func _get_flat_forward() -> Vector3:
+	var forward := _camera_controller.global_transform.basis * Vector3.FORWARD
+	forward.y = 0.0
+	if forward.length_squared() < 0.0001:
+		return Vector3.ZERO
+	return forward.normalized()
+
+
+func _get_attack_forward() -> Vector3:
+	var forward := _last_strong_direction
+	forward.y = 0.0
+	if forward.length_squared() > 0.0001:
+		return forward.normalized()
+	return _get_flat_forward()
+
+
+func _get_body_aim_point(body: Node3D, flat_y: float) -> Vector3:
+	return Vector3(body.global_position.x, flat_y, body.global_position.z)
+
+
+func _get_body_collision_radius(body: Node3D) -> float:
+	for child in body.get_children():
+		if child is CollisionShape3D:
+			var shape := (child as CollisionShape3D).shape
+			if shape is CapsuleShape3D:
+				return (shape as CapsuleShape3D).radius
+			if shape is SphereShape3D:
+				return (shape as SphereShape3D).radius
+			if shape is CylinderShape3D:
+				return (shape as CylinderShape3D).radius
+	return 0.45
 
 
 func _damage_katana_target(target: Object, hit_position: Vector3, direction: Vector3) -> bool:

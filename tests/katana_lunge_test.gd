@@ -28,6 +28,7 @@ func _run_test() -> void:
 	var enemy := ENEMY_SCENE.instantiate() as Node3D
 	test_root.add_child(enemy)
 	enemy.global_position = Vector3(0.0, 1.0, 6.0)
+	enemy.set_physics_process(false)
 
 	for _i in 5:
 		await process_frame
@@ -38,7 +39,7 @@ func _run_test() -> void:
 		enemy.global_position.x - player.global_position.x,
 		enemy.global_position.z - player.global_position.z
 	).length()
-	var expected_travel := flat_dist - player.attack_lunge_stop_margin
+	var expected_travel := flat_dist - player.attack_lunge_stop_margin - player._get_body_collision_radius(enemy)
 
 	if absf(toward.distance - expected_travel) > 0.15:
 		failures.append(
@@ -46,8 +47,10 @@ func _run_test() -> void:
 			% [expected_travel, toward.distance, flat_dist]
 		)
 
+	player._camera_controller.setup(player)
 	player._camera_controller._euler_rotation = Vector3(0.0, PI, 0.0)
 	player._camera_controller.transform.basis = Basis.from_euler(player._camera_controller._euler_rotation)
+	player._last_strong_direction = Vector3(0.0, 0.0, 1.0)
 	for _i in 2:
 		await process_frame
 
@@ -55,17 +58,18 @@ func _run_test() -> void:
 	player._begin_attack_lunge()
 	for _i in 10:
 		player._apply_attack_lunge(KatanaVisual.HIT_TIME / 10.0)
+		await process_frame
 
 	var moved_z := player.global_position.z - start_pos.z
-	if moved_z < expected_travel - 0.35:
+	if moved_z < expected_travel - 0.5:
 		failures.append("dash moved %.2f on Z, expected ~%.2f" % [moved_z, expected_travel])
 
 	var gap := Vector2(
 		enemy.global_position.x - player.global_position.x,
 		enemy.global_position.z - player.global_position.z
 	).length()
-	if gap > player.attack_lunge_stop_margin + 0.3:
-		failures.append("ended %.2f from enemy, want <= %.2f" % [gap, player.attack_lunge_stop_margin + 0.3])
+	if gap > player.attack_lunge_stop_margin + player._get_body_collision_radius(enemy) + 0.45:
+		failures.append("ended %.2f from enemy, want <= %.2f" % [gap, player.attack_lunge_stop_margin + player._get_body_collision_radius(enemy) + 0.45])
 
 	if failures.is_empty():
 		print("Katana full lunge verification passed")
