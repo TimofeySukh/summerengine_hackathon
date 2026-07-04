@@ -33,6 +33,12 @@ Surveillance katana survival in a flat night-city arena. **Design target:** CCTV
 
 Do not create assets from scratch (placeholder boxes, procedural meshes, etc.). Always search for ready-made assets first — free libraries, CC0 packs, Summer templates. Generate or model custom assets only if nothing suitable exists and the user asks for it. See `.summer/AGENTS.md`.
 
+## Music & Sound Licensing
+
+The game currently uses the main menu theme (`mainmenu_1.ogg`) from the **BattleBlock Theater OST** (composed by Patric Catani, Will Stamper, Analogik, etc.).
+- **Copyright Status:** Copyrighted by The Behemoth.
+- **License / Policy:** Used strictly for non-commercial prototyping and meme purposes. If the project progresses beyond a simple prototype/meme game, this soundtrack **must be replaced** with royalty-free or custom/original music to avoid copyright infringement.
+
 ## Current State
 
 ### Player
@@ -52,6 +58,10 @@ Do not create assets from scratch (placeholder boxes, procedural meshes, etc.). 
 
 - Flat concrete arena with dark city blocks, neon panels, red/blue lights, fog, and lane-strip accents
 - Main level composition is authored directly in `main.tscn`
+
+### Music
+
+- Autoload [MusicManager](file:///Users/Tim/racegame/level/music/music_manager.gd) loads and plays the BattleBlock Theater main menu theme on loop in the background at a moderate volume (`-12.0 dB`).
 
 ### Disabled / Legacy (from TPS template)
 
@@ -94,6 +104,9 @@ Do not create assets from scratch (placeholder boxes, procedural meshes, etc.). 
 - **Implemented surveillance slice:** removed WASD/jump locomotion; single `SurveillanceMount` CCTV feed; mouse pan, M/N jog, LMB slash from camera ray.
 - **Reverted surveillance slice** back to first-person WASD + mouse look per user request.
 - Reworked katana attack from rotation swing to straight forward thrust with linear trail VFX.
+- Changed katana attack to epic diagonal slash with arc VFX and combined rotation/position sweep.
 - Moved the first-person katana viewmodel to the right side of the camera frame.
 - Tuned the katana viewmodel back toward center after the far-right placement overshot.
 - Nudged the katana viewmodel slightly left for a better right-side frame position.
+- Integrated the BattleBlock Theater main menu theme as a looping background track via the new `MusicManager` autoload singleton.
+- Added a licensing warning in the project documentation noting that the soundtrack is copyrighted and must be replaced if the project goes beyond a meme game.

@@ -2,10 +2,11 @@ extends Node3D
 
 const IDLE_ROTATION := Vector3(0.06, 0.1, 0.0)
 const IDLE_POSITION := Vector3(0.14, -0.22, -0.52)
+const SLASH_SEGMENTS := 18
 
-@export var slash_color := Color(0.85, 0.95, 1.0, 0.72)
+@export var slash_color := Color(0.85, 0.95, 1.0, 0.78)
 
-var _thrust_trail: MeshInstance3D
+var _slash_arc: MeshInstance3D
 var _slash_material: StandardMaterial3D
 var _slash_tween: Tween
 
@@ -14,18 +15,19 @@ func _ready() -> void:
 	rotation = IDLE_ROTATION
 	position = IDLE_POSITION
 	_boost_materials(self)
-	_create_thrust_trail()
+	_create_slash_arc()
 
 
 func play_slash() -> void:
-	if _thrust_trail == null:
+	if _slash_arc == null:
 		return
 
 	if _slash_tween and _slash_tween.is_valid():
 		_slash_tween.kill()
 
-	_thrust_trail.visible = true
-	_thrust_trail.scale = Vector3(0.6, 0.6, 0.55)
+	_slash_arc.visible = true
+	_slash_arc.scale = Vector3(0.35, 0.35, 0.35)
+	_slash_arc.rotation = Vector3(-0.12, 0.04, -0.52)
 	_slash_material.albedo_color = slash_color
 	_slash_material.emission = Color(slash_color.r, slash_color.g, slash_color.b, 1.0)
 
@@ -33,9 +35,10 @@ func play_slash() -> void:
 	fade_color.a = 0.0
 
 	_slash_tween = create_tween().set_parallel(true)
-	_slash_tween.tween_property(_thrust_trail, "scale", Vector3(1.05, 1.05, 1.35), 0.13).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	_slash_tween.tween_property(_slash_material, "albedo_color", fade_color, 0.13).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	_slash_tween.chain().tween_callback(func() -> void: _thrust_trail.visible = false)
+	_slash_tween.tween_property(_slash_arc, "scale", Vector3(1.12, 1.12, 1.12), 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_slash_tween.tween_property(_slash_arc, "rotation:z", _slash_arc.rotation.z - 0.28, 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_slash_tween.tween_property(_slash_material, "albedo_color", fade_color, 0.2).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	_slash_tween.chain().tween_callback(func() -> void: _slash_arc.visible = false)
 
 
 func _boost_materials(node: Node) -> void:
@@ -72,14 +75,14 @@ func _tune_standard(material: StandardMaterial3D) -> StandardMaterial3D:
 	return tuned
 
 
-func _create_thrust_trail() -> void:
-	_thrust_trail = MeshInstance3D.new()
-	_thrust_trail.name = "ThrustTrail"
-	_thrust_trail.mesh = _build_thrust_mesh()
-	_thrust_trail.position = Vector3(0.0, 0.03, -0.16)
-	_thrust_trail.visible = false
-	_thrust_trail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	add_child(_thrust_trail)
+func _create_slash_arc() -> void:
+	_slash_arc = MeshInstance3D.new()
+	_slash_arc.name = "SlashArc"
+	_slash_arc.mesh = _build_diagonal_slash_mesh()
+	_slash_arc.position = Vector3(0.0, 0.02, -0.55)
+	_slash_arc.visible = false
+	_slash_arc.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(_slash_arc)
 
 	_slash_material = StandardMaterial3D.new()
 	_slash_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -89,31 +92,40 @@ func _create_thrust_trail() -> void:
 	_slash_material.albedo_color = slash_color
 	_slash_material.emission_enabled = true
 	_slash_material.emission = Color(slash_color.r, slash_color.g, slash_color.b, 1.0)
-	_slash_material.emission_energy_multiplier = 1.8
+	_slash_material.emission_energy_multiplier = 2.2
 	_slash_material.no_depth_test = true
-	_thrust_trail.material_override = _slash_material
+	_slash_arc.material_override = _slash_material
 
 
-func _build_thrust_mesh() -> ArrayMesh:
-	var vertices := PackedVector3Array([
-		Vector3(-0.06, -0.03, -0.18),
-		Vector3(0.06, -0.03, -0.18),
-		Vector3(-0.1, 0.02, -0.75),
-		Vector3(0.1, 0.02, -0.75),
-		Vector3(0.0, 0.1, -1.45),
-	])
-	var colors := PackedColorArray([
-		Color(slash_color.r, slash_color.g, slash_color.b, 0.0),
-		Color(slash_color.r, slash_color.g, slash_color.b, 0.0),
-		Color(slash_color.r, slash_color.g, slash_color.b, slash_color.a),
-		Color(slash_color.r, slash_color.g, slash_color.b, slash_color.a),
-		Color(slash_color.r, slash_color.g, slash_color.b, 0.0),
-	])
-	var indices := PackedInt32Array([
-		0, 1, 2,
-		1, 3, 2,
-		2, 3, 4,
-	])
+func _build_diagonal_slash_mesh() -> ArrayMesh:
+	var vertices := PackedVector3Array()
+	var colors := PackedColorArray()
+	var indices := PackedInt32Array()
+	var start_angle := deg_to_rad(58.0)
+	var end_angle := deg_to_rad(-38.0)
+	var inner_radius := 0.28
+	var outer_radius := 1.25
+
+	for i in SLASH_SEGMENTS + 1:
+		var t := float(i) / float(SLASH_SEGMENTS)
+		var angle := lerpf(start_angle, end_angle, t)
+		var direction := Vector3(cos(angle), sin(angle), -0.08)
+		var alpha := sin(t * PI) * slash_color.a
+		vertices.append(direction * inner_radius)
+		vertices.append(direction * outer_radius)
+		colors.append(Color(slash_color.r, slash_color.g, slash_color.b, alpha * 0.2))
+		colors.append(Color(slash_color.r, slash_color.g, slash_color.b, alpha))
+
+	for i in SLASH_SEGMENTS:
+		var base := i * 2
+		indices.append_array([
+			base,
+			base + 1,
+			base + 2,
+			base + 1,
+			base + 3,
+			base + 2,
+		])
 
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)

@@ -23,39 +23,51 @@ dof_blur_far_distance = 45.0
 
 [sub_resource type="Animation" id="Animation_nl12d"]
 resource_name = "Attack"
-length = 0.3
+length = 0.32
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
-tracks/0/path = NodePath("../CameraController/PlayerCamera/KatanaVisual:position")
+tracks/0/path = NodePath("../CameraController/PlayerCamera/KatanaVisual:rotation")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
-"times": PackedFloat32Array(0, 0.05, 0.1, 0.22),
+"times": PackedFloat32Array(0, 0.05, 0.12, 0.28),
 "transitions": PackedFloat32Array(1, 1, 1, 1),
 "update": 0,
-"values": [Vector3(0.62, -0.22, -0.52), Vector3(0.64, -0.2, -0.38), Vector3(0.54, -0.14, -1.28), Vector3(0.62, -0.22, -0.52)]
+"values": [Vector3(0.06, 0.1, 0.0), Vector3(-0.42, 0.05, 0.55), Vector3(1.15, 0.08, -0.85), Vector3(0.06, 0.1, 0.0)]
 }
 tracks/1/type = "value"
 tracks/1/imported = false
-tracks/1/enabled = false
-tracks/1/path = NodePath("MeleeAnchor/MeleeSphere:visible")
+tracks/1/enabled = true
+tracks/1/path = NodePath("../CameraController/PlayerCamera/KatanaVisual:position")
 tracks/1/interp = 1
 tracks/1/loop_wrap = true
 tracks/1/keys = {
+"times": PackedFloat32Array(0, 0.05, 0.12, 0.28),
+"transitions": PackedFloat32Array(1, 1, 1, 1),
+"update": 0,
+"values": [Vector3(0.14, -0.22, -0.52), Vector3(0.22, -0.06, -0.42), Vector3(-0.02, -0.38, -0.62), Vector3(0.14, -0.22, -0.52)]
+}
+tracks/2/type = "value"
+tracks/2/imported = false
+tracks/2/enabled = false
+tracks/2/path = NodePath("MeleeAnchor/MeleeSphere:visible")
+tracks/2/interp = 1
+tracks/2/loop_wrap = true
+tracks/2/keys = {
 "times": PackedFloat32Array(0, 0.2),
 "transitions": PackedFloat32Array(1, 1),
 "update": 1,
 "values": [true, false]
 }
-tracks/2/type = "method"
-tracks/2/imported = false
-tracks/2/enabled = true
-tracks/2/path = NodePath("MeleeAttackArea")
-tracks/2/interp = 1
-tracks/2/loop_wrap = true
-tracks/2/keys = {
-"times": PackedFloat32Array(0, 0.2),
+tracks/3/type = "method"
+tracks/3/imported = false
+tracks/3/enabled = true
+tracks/3/path = NodePath("MeleeAttackArea")
+tracks/3/interp = 1
+tracks/3/loop_wrap = true
+tracks/3/keys = {
+"times": PackedFloat32Array(0.06, 0.18),
 "transitions": PackedFloat32Array(1, 1),
 "values": [{
 "args": [],
@@ -65,14 +77,14 @@ tracks/2/keys = {
 "method": &"deactivate"
 }]
 }
-tracks/3/type = "method"
-tracks/3/imported = false
-tracks/3/enabled = true
-tracks/3/path = NodePath("../CameraController/PlayerCamera/KatanaVisual")
-tracks/3/interp = 1
-tracks/3/loop_wrap = true
-tracks/3/keys = {
-"times": PackedFloat32Array(0.02),
+tracks/4/type = "method"
+tracks/4/imported = false
+tracks/4/enabled = true
+tracks/4/path = NodePath("../CameraController/PlayerCamera/KatanaVisual")
+tracks/4/interp = 1
+tracks/4/loop_wrap = true
+tracks/4/keys = {
+"times": PackedFloat32Array(0.04),
 "transitions": PackedFloat32Array(1),
 "values": [{
 "args": [],
@@ -116,7 +128,7 @@ tracks/2/keys = {
 "times": PackedFloat32Array(0),
 "transitions": PackedFloat32Array(1),
 "update": 0,
-"values": [Vector3(0.62, -0.22, -0.52)]
+"values": [Vector3(0.14, -0.22, -0.52)]
 }
 
 [sub_resource type="AnimationLibrary" id="AnimationLibrary_xvsui"]
