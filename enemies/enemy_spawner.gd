@@ -73,8 +73,7 @@ func spawn_enemy() -> void:
 
 	var distance := randf_range(minf(min_spawn_distance, spawn_radius), spawn_radius)
 	var spawn_position := origin + Vector3(cos(spawn_angle), 0.0, sin(spawn_angle)) * distance
-	spawn_position.x = clampf(spawn_position.x, -32.0, 32.0)
-	spawn_position.z = clampf(spawn_position.z, -32.0, 32.0)
+	spawn_position = _clamp_to_arena(spawn_position)
 	spawn_position.y = spawn_y
 
 	var enemy := ENEMY_SCENE.instantiate() as Node3D
@@ -123,3 +122,10 @@ func _refresh_squad_slots() -> void:
 		var slot_angle := ring_offset + TAU * float(i) / float(count)
 		var can_commit := i == 0
 		squad[i].set_squad_slot(i, count, slot_angle, can_commit)
+
+
+func _clamp_to_arena(pos: Vector3) -> Vector3:
+	for node in get_tree().get_nodes_in_group("arena_bounds"):
+		if node.has_method("clamp_position"):
+			return node.clamp_position(pos)
+	return pos

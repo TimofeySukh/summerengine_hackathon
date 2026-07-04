@@ -41,11 +41,15 @@ class GameBridge:
     def send_slash(self, hand: Hand) -> None:
         self._send({"v": 1, "type": "slash", "hand": hand})
 
+    def send_shockwave(self, level: float = 1.0) -> None:
+        self._send({"v": 1, "type": "shockwave", "level": round(level, 3)})
+
     def send_hands(self, frame: HandFrame) -> None:
         self._send(
             {
                 "v": 1,
                 "type": "hands",
+                "mode": "screen",
                 "lx": round(frame.lx, 4),
                 "ly": round(frame.ly, 4),
                 "rx": round(frame.rx, 4),

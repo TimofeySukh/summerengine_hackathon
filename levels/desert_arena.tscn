@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3 uid="uid://desertarena500"]
+[gd_scene load_steps=16 format=3 uid="uid://desertarena500"]
 
 [ext_resource type="PackedScene" uid="uid://ciqrpd5675boy" path="res://player/player.tscn" id="1_player"]
 [ext_resource type="Script" uid="uid://blrf6nremkb0r" path="res://enemies/enemy_spawner.gd" id="2_spawner"]
@@ -10,6 +10,8 @@
 [ext_resource type="Sky" path="res://environment/desert/desert_sky.tres" id="8_sky"]
 [ext_resource type="PackedScene" path="res://environment/desert/pyramid_landmark.tscn" id="9_landmark"]
 [ext_resource type="PackedScene" uid="uid://c8webcamfeed01" path="res://ui/webcam_feed.tscn" id="10_webcam"]
+[ext_resource type="Script" path="res://environment/desert/arena_bounds.gd" id="11_bounds"]
+[ext_resource type="Script" path="res://environment/desert/desert_scatter.gd" id="12_scatter"]
 
 [sub_resource type="Environment" id="Environment_desert"]
 background_mode = 2
@@ -31,12 +33,12 @@ volumetric_fog_density = 0.004
 volumetric_fog_albedo = Color(0.92, 0.78, 0.55, 1)
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_sand"]
-size = Vector2(250, 250)
+size = Vector2(110, 110)
 subdivide_width = 0
 subdivide_depth = 0
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_sand"]
-size = Vector3(250, 0.4, 250)
+size = Vector3(110, 0.4, 110)
 
 [node name="DesertArena" type="Node3D"]
 
@@ -58,6 +60,7 @@ light_energy = 0.22
 shadow_enabled = false
 
 [node name="SandFloor" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 12)
 
 [node name="SandMesh" type="MeshInstance3D" parent="SandFloor"]
 mesh = SubResource("PlaneMesh_sand")
@@ -68,17 +71,31 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.2, 0)
 shape = SubResource("BoxShape3D_sand")
 
 [node name="PyramidLandmark" parent="." instance=ExtResource("9_landmark")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -8)
+
+[node name="ArenaBounds" type="Node3D" parent="."]
+script = ExtResource("11_bounds")
+center = Vector3(0, 0, 12)
+half_extent_x = 38.0
+half_extent_z = 38.0
+
+[node name="DesertScatter" type="Node3D" parent="."]
+script = ExtResource("12_scatter")
+center = Vector3(0, 0, 12)
+half_extent_x = 34.0
+half_extent_z = 34.0
+prop_count = 58
 
 [node name="Player" parent="." instance=ExtResource("1_player")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 85)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.6, 28)
 bullet_speed = 10.0
-acceleration = 4.0
+acceleration = 16.0
 
 [node name="Enemies" type="Node3D" parent="."]
 script = ExtResource("2_spawner")
-spawn_radius = 45.0
+spawn_radius = 32.0
 spawn_y = 0.2
-min_spawn_distance = 18.0
+min_spawn_distance = 14.0
 
 [node name="RunDirector" type="Node" parent="."]
 script = ExtResource("5_director")

@@ -42,8 +42,9 @@ When `--game-bridge` is on, slash and torso-yaw events go to Godot autoload `Cam
 |---------|----------------|
 | `{"type":"hands","lx","ly","rx","ry","deg"?}` | Katana positions follow wrists; optional torso yaw |
 | `{"type":"slash","hand":"left\|right"}` | Triggers slash animation + hit |
+| `{"type":"shockwave","level"?}` | Shockwave around player (mic loud sound in webcam mode) |
 
-With `--game-bridge`, local arrow-key emulation is off unless you pass `--also-keys`. Without `--game-bridge`, torso yaw can hold `Q` / `E` for camera rotation and wrist slashes tap the arrow keys.
+With `--game-bridge`, local arrow-key emulation is off unless you pass `--also-keys`. Loud mic bursts (default RMS ≥ 0.13) also trigger shockwave every ~3.5s. Without `--game-bridge`, torso yaw can hold `Q` / `E` for camera rotation and wrist slashes tap the arrow keys.
 
 ## Modules
 

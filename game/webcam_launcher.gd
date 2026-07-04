@@ -10,23 +10,21 @@ var _pid := -1
 var _external_launch := false
 
 
-func _ready() -> void:
-	tree_exiting.connect(stop)
-
-
-func _exit_tree() -> void:
-	stop()
-
-
 func is_running() -> bool:
-	if _external_launch:
-		return _is_pose_stream_running()
+	if _external_launch or _is_pose_stream_running():
+		return true
 	return _pid > 0 and OS.is_process_running(_pid)
 
 
 func start() -> void:
-	stop()
 	if not ControlMode.is_webcam():
+		return
+
+	if is_running():
+		print("WebcamLauncher: pose_stream already running — keeping it")
+		_external_launch = true
+		if OS.get_name() == "macOS":
+			OS.execute("osascript", ["-e", "tell application \"Terminal\" to activate"], [], true, false)
 		return
 
 	var tools := ProjectSettings.globalize_path(TOOLS_DIR)

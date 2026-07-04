@@ -11,7 +11,6 @@ const GAME_SCENE := "res://levels/desert_arena.tscn"
 
 func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	WebcamLauncher.stop()
 	_play_button.pressed.connect(_on_play_pressed)
 	_sandbox_button.pressed.connect(_on_sandbox_pressed)
 	_quit_button.pressed.connect(_on_quit_pressed)
@@ -35,9 +34,9 @@ func _on_control_mode_selected(index: int) -> void:
 
 func _update_control_hint() -> void:
 	if ControlMode.is_webcam():
-		_control_hint.text = """Webcam mode: camera opens in a separate Katana Pose window.
-Move your hands — katanas follow your wrists. Slash to attack.
-WASD to move."""
+		_control_hint.text = """Webcam: Katana Pose shows the board camera.
+Calibrate once — sweep arms top-to-bottom at your sides (SPACE).
+Left/right katana are mirrored to match the camera. Slash to attack."""
 	else:
 		_control_hint.text = "WASD move · mouse look · <-/-> katana slashes"
 
@@ -45,6 +44,8 @@ WASD to move."""
 func _on_play_pressed() -> void:
 	GameSettings.set_survival_mode()
 	CameraInputBridge.reset_session()
+	if ControlMode.is_webcam():
+		WebcamLauncher.start()
 	get_tree().change_scene_to_file(GAME_SCENE)
 
 
@@ -53,8 +54,6 @@ func _on_sandbox_pressed() -> void:
 	CameraInputBridge.reset_session()
 	if ControlMode.is_webcam():
 		WebcamLauncher.start()
-	else:
-		WebcamLauncher.stop()
 	get_tree().change_scene_to_file(GAME_SCENE)
 
 

@@ -1,0 +1,12 @@
+[gd_scene format=3 uid="uid://c18yccx00aah7"]
+
+[ext_resource type="PackedScene" uid="uid://d3cwvjsrw82l" path="res://player/katana/katana.glb" id="1_katana"]
+[ext_resource type="Script" path="res://player/katana/webcam_katana.gd" id="2_script"]
+
+[node name="WebcamKatana" type="Node3D"]
+script = ExtResource("2_script")
+
+[node name="SlashPivot" type="Node3D" parent="."]
+
+[node name="Katana" parent="SlashPivot" instance=ExtResource("1_katana")]
+transform = Transform3D(0, -0.038, 0, 0.038, 0, 0, 0, 0, 0.038, 0.05527273, 0, -0.02763636)

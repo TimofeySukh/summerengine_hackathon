@@ -52,14 +52,30 @@ class BoardAudioPlayer:
         *,
         reconnect_delay: float = 2.0,
         read_chunk_bytes: int = 4096,
+        play_audio: bool = True,
     ):
         self.url = url
         self.reconnect_delay = reconnect_delay
         self.read_chunk_bytes = read_chunk_bytes
+        self.play_audio = play_audio
         self.connected = False
         self.last_error = ""
+        self.rms = 0.0
+        self.peak = 0.0
+        self.burst_threshold = 0.13
+        self.burst_cooldown_s = 3.5
+        self._last_burst_at = 0.0
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
+
+    def check_burst(self) -> bool:
+        if self.rms < self.burst_threshold:
+            return False
+        now = time.monotonic()
+        if now - self._last_burst_at < self.burst_cooldown_s:
+            return False
+        self._last_burst_at = now
+        return True
 
     def start(self) -> None:
         if self._thread is not None and self._thread.is_alive():
@@ -94,11 +110,29 @@ class BoardAudioPlayer:
             dtype = np.int16 if sample_width == 2 else np.int8
             frame_bytes = sample_width * channels
 
-            with sd.OutputStream(
-                samplerate=sample_rate,
-                channels=channels,
-                dtype=dtype,
-            ) as out:
+            if self.play_audio:
+                with sd.OutputStream(
+                    samplerate=sample_rate,
+                    channels=channels,
+                    dtype=dtype,
+                ) as out:
+                    self.connected = True
+                    self.last_error = ""
+                    pending = b""
+                    while not self._stop.is_set():
+                        chunk = response.read(self.read_chunk_bytes)
+                        if not chunk:
+                            self.connected = False
+                            break
+                        pending += chunk
+                        usable = len(pending) - (len(pending) % frame_bytes)
+                        if usable <= 0:
+                            continue
+                        pcm = pending[:usable]
+                        pending = pending[usable:]
+                        self._update_levels(pcm, dtype, sample_width)
+                        out.write(np.frombuffer(pcm, dtype=dtype))
+            else:
                 self.connected = True
                 self.last_error = ""
                 pending = b""
@@ -113,4 +147,14 @@ class BoardAudioPlayer:
                         continue
                     pcm = pending[:usable]
                     pending = pending[usable:]
-                    out.write(np.frombuffer(pcm, dtype=dtype))
+                    self._update_levels(pcm, dtype, sample_width)
+
+    def _update_levels(self, pcm: bytes, dtype, sample_width: int) -> None:
+        samples = np.frombuffer(pcm, dtype=dtype).astype(np.float32)
+        if sample_width == 2:
+            samples /= 32768.0
+        elif sample_width == 1:
+            samples = (samples - 128.0) / 128.0
+        if samples.size > 0:
+            self.rms = float(np.sqrt(np.mean(samples * samples)))
+            self.peak = float(np.max(np.abs(samples)))

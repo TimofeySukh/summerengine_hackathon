@@ -93,6 +93,7 @@ class MjpegStreamReader:
         ok, frame = self._cap.read()
 
         if ok and frame is not None and frame.size > 0:
+            frame = cv2.flip(frame, 1)  # mirror view (selfie), not audience-facing
             self._last_frame = frame
             self._read_failures = 0
             self._empty_frames = 0

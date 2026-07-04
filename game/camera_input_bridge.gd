@@ -7,8 +7,9 @@ const STALE_MS := 2000
 
 var _peer: PacketPeerUDP
 var _slash_queue: Array[String] = []
-var _left_hand_offset := Vector2.ZERO
-var _right_hand_offset := Vector2.ZERO
+var _shockwave_pending := false
+var _left_hand_screen := Vector2.ZERO
+var _right_hand_screen := Vector2.ZERO
 var _has_hands := false
 var _preview_texture := ImageTexture.new()
 var _has_preview := false
@@ -36,12 +37,18 @@ func poll_slash() -> String:
 	return _slash_queue.pop_front()
 
 
-func get_left_hand_offset() -> Vector2:
-	return _left_hand_offset
+func poll_shockwave() -> bool:
+	var pending := _shockwave_pending
+	_shockwave_pending = false
+	return pending
 
 
-func get_right_hand_offset() -> Vector2:
-	return _right_hand_offset
+func get_left_hand_screen() -> Vector2:
+	return _left_hand_screen
+
+
+func get_right_hand_screen() -> Vector2:
+	return _right_hand_screen
 
 
 func has_hands() -> bool:
@@ -62,10 +69,11 @@ func is_stream_active() -> bool:
 
 func reset_session() -> void:
 	_slash_queue.clear()
+	_shockwave_pending = false
 	_has_hands = false
 	_has_preview = false
-	_left_hand_offset = Vector2.ZERO
-	_right_hand_offset = Vector2.ZERO
+	_left_hand_screen = Vector2.ZERO
+	_right_hand_screen = Vector2.ZERO
 	_last_packet_ms = 0
 
 
@@ -82,9 +90,11 @@ func _parse_packet(raw: String) -> void:
 			var hand := str(data.get("hand", ""))
 			if hand == "left" or hand == "right":
 				_slash_queue.append(hand)
+		"shockwave":
+			_shockwave_pending = true
 		"hands":
-			_left_hand_offset = Vector2(float(data.get("lx", 0.0)), float(data.get("ly", 0.0)))
-			_right_hand_offset = Vector2(float(data.get("rx", 0.0)), float(data.get("ry", 0.0)))
+			_left_hand_screen = Vector2(float(data.get("lx", 0.0)), float(data.get("ly", 0.0)))
+			_right_hand_screen = Vector2(float(data.get("rx", 0.0)), float(data.get("ry", 0.0)))
 			_has_hands = true
 		"preview":
 			var encoded: String = str(data.get("jpg", ""))

@@ -17,13 +17,14 @@ from key_controller import ArrowKeyController
 from mjpeg_reader import MjpegStreamReader
 from slash_detector import SlashDetector, draw_slash_overlay, draw_wrist_markers
 from game_bridge import GameBridge
-from hand_tracker import compute_hand_frame
+from hand_tracker import compute_hand_frame, compute_torso_center
 from hand_calibration import (
-    CalibratorPhase,
     DEFAULT_CALIBRATION_PATH,
-    HandCalibrator,
     HandCalibration,
+    RuntimeBoundsTracker,
+    SweepCalibrator,
     load_calibration,
+    save_calibration,
 )
 from mediapipe.tasks import python as mp_tasks
 from mediapipe.tasks.python.vision import drawing_styles, drawing_utils
@@ -103,12 +104,13 @@ def add_hud(
     fps: float,
     pose_fps: float,
     audio_ok: bool = False,
+    audio_rms: float = 0.0,
     keys_left: int = 0,
     keys_right: int = 0,
 ) -> None:
     cv2.putText(
         frame,
-        f"stream {fps:.1f} fps | pose {pose_fps:.1f} fps | audio {'on' if audio_ok else 'off'}",
+        f"stream {fps:.1f} fps | pose {pose_fps:.1f} fps | audio {'on' if audio_ok else 'off'} rms={audio_rms:.2f}",
         (8, 20),
         cv2.FONT_HERSHEY_SIMPLEX,
         0.5,
@@ -152,7 +154,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--key-cooldown",
         type=float,
-        default=0.35,
+        default=0.28,
         help="Seconds between arrow key presses per hand",
     )
     parser.add_argument("--model", type=Path, default=None)
@@ -166,14 +168,26 @@ def parse_args() -> argparse.Namespace:
         help="Hide pose skeleton (wrists and slash FX still shown)",
     )
     parser.add_argument("--reconnect-delay", type=float, default=0.5)
-    parser.add_argument("--slash-min-speed", type=float, default=480.0, help="Peak wrist speed px/s")
+    parser.add_argument("--slash-min-speed", type=float, default=280.0, help="Peak wrist speed px/s")
     parser.add_argument(
         "--slash-min-travel-ratio",
         type=float,
-        default=0.26,
-        help="Min slash arc as fraction of frame height (default: 0.26 ~83px at 320p)",
+        default=0.16,
+        help="Min slash arc as fraction of frame height (default: 0.16 ~51px at 320p)",
     )
-    parser.add_argument("--slash-cooldown", type=float, default=0.55)
+    parser.add_argument("--slash-cooldown", type=float, default=0.32)
+    parser.add_argument(
+        "--shockwave-threshold",
+        type=float,
+        default=0.13,
+        help="Mic RMS level (0-1) to trigger shockwave in game bridge mode",
+    )
+    parser.add_argument(
+        "--shockwave-cooldown",
+        type=float,
+        default=3.5,
+        help="Seconds between mic-triggered shockwaves",
+    )
     parser.add_argument(
         "--pose-every",
         type=int,
@@ -192,14 +206,9 @@ def parse_args() -> argparse.Namespace:
         help="Show raw stream only (debug stream fps)",
     )
     parser.add_argument(
-        "--recalibrate",
-        action="store_true",
-        help="Force hand calibration (T-pose, then arms at rest)",
-    )
-    parser.add_argument(
         "--skip-calibration",
         action="store_true",
-        help="Skip calibration UI (use saved file or defaults)",
+        help="Skip initial sweep calibration (use saved file or defaults)",
     )
     return parser.parse_args()
 
@@ -289,6 +298,8 @@ def main() -> int:
         min_peak_speed_px_s=args.slash_min_speed,
         min_travel_ratio=args.slash_min_travel_ratio,
         cooldown_s=args.slash_cooldown,
+        direction_agreement=0.55,
+        min_vertical_ratio=0.06,
     )
     use_keys = not args.no_keys and not (args.game_bridge and not args.also_keys)
     key_controller = None if not use_keys else ArrowKeyController(cooldown_s=args.key_cooldown)
@@ -298,31 +309,31 @@ def main() -> int:
         game_bridge.ping()
         print(f"Game bridge: UDP -> {args.game_host}:{args.game_port}")
     audio_player = None
-    if not args.no_audio:
-        audio_player = BoardAudioPlayer(args.audio)
+    if args.game_bridge or not args.no_audio:
+        audio_player = BoardAudioPlayer(args.audio, play_audio=not args.no_audio)
+        audio_player.burst_threshold = args.shockwave_threshold
+        audio_player.burst_cooldown_s = args.shockwave_cooldown
         audio_player.start()
-        print(f"Audio: {args.audio} (single client — close ffplay/other listeners first)")
+        if not args.no_audio:
+            print(f"Audio: {args.audio} (single client — close ffplay/other listeners first)")
+        else:
+            print(f"Audio monitor: {args.audio} (shockwave on loud sound)")
     if key_controller is not None:
         print(f"Arrow keys: left hand -> Left, right hand -> Right ({key_controller.backend})")
 
-    hand_calibration: HandCalibration | None = None
-    calibrator = HandCalibrator(path=DEFAULT_CALIBRATION_PATH)
+    baseline = load_calibration(DEFAULT_CALIBRATION_PATH) or HandCalibration.default()
+    calibrator = SweepCalibrator(path=DEFAULT_CALIBRATION_PATH)
+    bounds_tracker: RuntimeBoundsTracker | None = None
     if args.skip_calibration:
-        hand_calibration = load_calibration(DEFAULT_CALIBRATION_PATH) or HandCalibration()
-        calibrator.calibration = hand_calibration
-        calibrator.phase = CalibratorPhase.SKIPPED
-        print("Hand calibration skipped.")
-    elif args.recalibrate:
-        print("Hand calibration: T-pose, then arms at rest.")
+        calibrator.skip()
+        bounds_tracker = RuntimeBoundsTracker(baseline, path=DEFAULT_CALIBRATION_PATH)
+        print("Sweep calibration skipped.")
+    elif load_calibration(DEFAULT_CALIBRATION_PATH) is not None:
+        calibrator.skip()
+        bounds_tracker = RuntimeBoundsTracker(baseline, path=DEFAULT_CALIBRATION_PATH)
+        print(f"Loaded bounds from {DEFAULT_CALIBRATION_PATH.name}")
     else:
-        loaded = load_calibration(DEFAULT_CALIBRATION_PATH)
-        if loaded is not None:
-            hand_calibration = loaded
-            calibrator.calibration = loaded
-            calibrator.phase = CalibratorPhase.SKIPPED
-            print(f"Loaded hand calibration from {DEFAULT_CALIBRATION_PATH.name}")
-        else:
-            print("No saved calibration — T-pose + rest setup on start.")
+        print("No bounds file — sweep calibration on start (SPACE).")
 
     window_name = "Katana Pose"
     preview_w, preview_h = 640, 480
@@ -342,7 +353,7 @@ def main() -> int:
     last_landmarks = None
     display_frame: np.ndarray | None = None
 
-    print("Running. Keys: q or Esc = quit, c = recalibrate hands")
+    print("Running. Keys: q or Esc = quit, c = recalibrate bounds")
     try:
         while True:
             now = time.monotonic()
@@ -351,6 +362,9 @@ def main() -> int:
                 last_status_check = now
 
             got_new_frame, camera_frame = reader.read_latest()
+            if game_bridge is not None and audio_player is not None and audio_player.check_burst():
+                game_bridge.send_shockwave(audio_player.peak)
+                print(f"GAME shockwave (mic rms={audio_player.rms:.3f})")
             if camera_frame is not None:
                 display_frame = camera_frame
                 if got_new_frame:
@@ -396,10 +410,18 @@ def main() -> int:
                 )
                 if last_landmarks is not None:
                     poses_since_report += 1
-                    if not calibrator.blocks_tracking:
+                    if calibrator.blocks_tracking:
+                        calibrator.update(last_landmarks)
+                        if calibrator.ready and bounds_tracker is None:
+                            bounds_tracker = RuntimeBoundsTracker(
+                                calibrator.calibration,
+                                path=DEFAULT_CALIBRATION_PATH,
+                            )
+                    else:
                         hand_frame = compute_hand_frame(last_landmarks)
-                        if hand_frame is not None and hand_calibration is not None:
-                            hand_frame = hand_calibration.apply(hand_frame)
+                        center = compute_torso_center(last_landmarks)
+                        if hand_frame is not None and bounds_tracker is not None and center is not None:
+                            hand_frame = bounds_tracker.update(hand_frame, center)
                         if game_bridge is not None and hand_frame is not None:
                             game_bridge.send_hands(hand_frame)
                         slash_event = slash_detector.update(
@@ -415,9 +437,6 @@ def main() -> int:
                                 print(f"GAME slash {slash_event.hand} ({slash_event.direction})")
 
             if calibrator.blocks_tracking:
-                calibrator.update(last_landmarks)
-                if calibrator.calibration is not None and calibrator.ready:
-                    hand_calibration = calibrator.calibration
                 frame = display_frame.copy()
                 if last_landmarks is not None and not args.no_skeleton:
                     draw_pose(frame, last_landmarks)
@@ -448,6 +467,7 @@ def main() -> int:
                 fps=stream_fps,
                 pose_fps=pose_fps,
                 audio_ok=audio_player.connected if audio_player is not None else False,
+                audio_rms=audio_player.rms if audio_player is not None else 0.0,
                 keys_left=key_controller.total_left if key_controller else 0,
                 keys_right=key_controller.total_right if key_controller else 0,
             )
@@ -478,13 +498,14 @@ def main() -> int:
                 if key in (ord("q"), 27):
                     break
                 if key == ord("c"):
-                    calibrator = HandCalibrator(path=DEFAULT_CALIBRATION_PATH)
-                    calibrator.start()
-                    hand_calibration = None
-                    print("Recalibrating hands...")
+                    calibrator = SweepCalibrator(path=DEFAULT_CALIBRATION_PATH)
+                    bounds_tracker = None
+                    print("Recalibrating bounds...")
             elif not got_new_frame:
                 time.sleep(0.001)
     finally:
+        if bounds_tracker is not None:
+            save_calibration(bounds_tracker.baseline, DEFAULT_CALIBRATION_PATH)
         reader.stop()
         if audio_player is not None:
             audio_player.stop()

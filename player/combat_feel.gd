@@ -3,6 +3,7 @@ extends Node
 
 @export var kill_shake := 0.58
 @export var slash_shake := 0.24
+@export var shockwave_shake := 0.42
 
 @onready var _slash_sound: AudioStreamPlayer = $SlashSound
 @onready var _kill_sound: AudioStreamPlayer = $KillSound
@@ -19,6 +20,11 @@ func play_slash_feedback() -> void:
 		_camera_shake.add_trauma(slash_shake)
 	_slash_sound.pitch_scale = randf_range(0.94, 1.06)
 	_slash_sound.play()
+
+
+func play_shockwave_feedback() -> void:
+	if _camera_shake != null:
+		_camera_shake.add_trauma(shockwave_shake)
 
 
 func play_kill_feedback() -> void:

@@ -1,28 +1,25 @@
-"""Torso-centered hand offsets for in-game katana viewmodels."""
+"""Direct wrist positions from the board camera (normalized screen 0–1)."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-LEFT_SHOULDER = 11
-RIGHT_SHOULDER = 12
 LEFT_WRIST = 15
 RIGHT_WRIST = 16
+LEFT_SHOULDER = 11
+RIGHT_SHOULDER = 12
 LEFT_HIP = 23
 RIGHT_HIP = 24
 
 
 @dataclass(frozen=True)
 class HandFrame:
-    """Offsets in game space: +x right on screen, +y up on screen."""
+    """Wrist positions in camera image space: x/y in 0–1, origin top-left."""
 
     lx: float
     ly: float
     rx: float
     ry: float
-    center_x: float
-    center_y: float
-    span: float
 
 
 def _ok(lm, min_visibility: float) -> bool:
@@ -31,40 +28,28 @@ def _ok(lm, min_visibility: float) -> bool:
 
 
 def compute_hand_frame(landmarks, *, min_visibility: float = 0.5) -> HandFrame | None:
-    if max(RIGHT_HIP, RIGHT_WRIST) >= len(landmarks):
+    if max(LEFT_WRIST, RIGHT_WRIST) >= len(landmarks):
         return None
 
-    ls = landmarks[LEFT_SHOULDER]
-    rs = landmarks[RIGHT_SHOULDER]
-    lh = landmarks[LEFT_HIP]
-    rh = landmarks[RIGHT_HIP]
     lw = landmarks[LEFT_WRIST]
     rw = landmarks[RIGHT_WRIST]
-
-    needed = (ls, rs, lh, rh, lw, rw)
-    if not all(_ok(lm, min_visibility) for lm in needed):
+    if not _ok(lw, min_visibility) or not _ok(rw, min_visibility):
         return None
 
-    center_x = (ls.x + rs.x + lh.x + rh.x) * 0.25
-    center_y = (ls.y + rs.y + lh.y + rh.y) * 0.25
+    return HandFrame(lx=lw.x, ly=lw.y, rx=rw.x, ry=rw.y)
 
-    span = ((rs.x - ls.x) ** 2 + (rs.y - ls.y) ** 2) ** 0.5
-    if span < 1e-4:
+
+def compute_torso_center(landmarks, *, min_visibility: float = 0.5) -> tuple[float, float] | None:
+    if RIGHT_HIP >= len(landmarks):
         return None
-
-    # Board camera is mirrored: keep +y as screen-up, but do not flip x (MediaPipe
-    # already labels left/right from the player's body, not the mirrored image).
-    lx = (lw.x - center_x) / span
-    ly = -(lw.y - center_y) / span
-    rx = (rw.x - center_x) / span
-    ry = -(rw.y - center_y) / span
-
-    return HandFrame(
-        lx=lx,
-        ly=ly,
-        rx=rx,
-        ry=ry,
-        center_x=center_x,
-        center_y=center_y,
-        span=span,
+    points = (
+        landmarks[LEFT_SHOULDER],
+        landmarks[RIGHT_SHOULDER],
+        landmarks[LEFT_HIP],
+        landmarks[RIGHT_HIP],
     )
+    if not all(_ok(lm, min_visibility) for lm in points):
+        return None
+    cx = sum(lm.x for lm in points) * 0.25
+    cy = sum(lm.y for lm in points) * 0.25
+    return cx, cy

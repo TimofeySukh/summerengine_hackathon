@@ -9,7 +9,7 @@ const BULLET_SCENE := preload("bullet.tscn")
 enum WEAPON_TYPE { DEFAULT, GRENADE }
 
 ## Character maximum run speed on the ground.
-@export var move_speed := 8.0
+@export var move_speed := 20.0
 ## Speed of shot bullets.
 @export var bullet_speed := 10.0
 ## Max range to lock onto an enemy for a katana lunge.
@@ -38,8 +38,12 @@ enum WEAPON_TYPE { DEFAULT, GRENADE }
 @export var threat_focus_duration := 1.35
 ## Faster camera pull when reacting to a rear threat.
 @export var threat_aim_speed_multiplier := 2.8
-## Movement acceleration (how fast character achieve maximum speed)
-@export var acceleration := 4.0
+## Movement acceleration (deceleration when releasing WASD)
+@export var acceleration := 16.0
+## Quick burst dash on Shift — distance, duration, cooldown.
+@export var dash_distance := 10.0
+@export var dash_duration := 0.2
+@export var dash_cooldown := 0.9
 ## Jump impulse
 @export var jump_initial_impulse := 12.0
 ## Jump impulse when player keeps pressing jump
@@ -64,6 +68,7 @@ enum WEAPON_TYPE { DEFAULT, GRENADE }
 @onready var _attack_animation_player: AnimationPlayer = $CharacterRotationRoot/MeleeAnchor/AnimationPlayer
 @onready var _katana_left: KatanaVisual = $CameraController/PlayerCamera/KatanaVisualLeft
 @onready var _katana_right: KatanaVisual = $CameraController/PlayerCamera/KatanaVisualRight
+@onready var _webcam_katanas: WebcamKatanaController = $CameraController/PlayerCamera/WebcamKatanaController
 @onready var _ground_shapecast: ShapeCast3D = $GroundShapeCast
 @onready var _grenade_aim_controller: GrenadeLauncher = $GrenadeLauncher
 @onready var _character_skin: CharacterSkin = $CharacterRotationRoot/CharacterSkin
@@ -72,6 +77,7 @@ enum WEAPON_TYPE { DEFAULT, GRENADE }
 @onready var _step_sound: AudioStreamPlayer3D = $StepSound
 @onready var _landing_sound: AudioStreamPlayer3D = $LandingSound
 @onready var _combat_feel: Node = $CombatFeel
+@onready var _shockwave: ShockwaveAbility = $ShockwaveAbility
 
 @onready var _equipped_weapon: WEAPON_TYPE = WEAPON_TYPE.DEFAULT
 @onready var _move_direction := Vector3.ZERO
@@ -90,21 +96,31 @@ var _lunge_start := Vector3.ZERO
 var _lunge_end := Vector3.ZERO
 var _lunge_elapsed := 0.0
 var _lunge_target: Node3D = null
+var _dash_active := false
+var _dash_start := Vector3.ZERO
+var _dash_end := Vector3.ZERO
+var _dash_elapsed := 0.0
+var _dash_cooldown_left := 0.0
 var _chain_target: Node3D = null
 var _threat_focus_until := 0.0
 var _is_dead := false
 var _webcam_warned := false
-
 
 func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	_camera_controller.call_deferred("setup", self)
 	if ControlMode.is_webcam():
 		CameraInputBridge.reset_session()
-		_katana_left.set_webcam_tracking(true)
-		_katana_right.set_webcam_tracking(true)
+		_katana_left.visible = false
+		_katana_right.visible = false
+		_webcam_katanas.call_deferred("enable")
+		_webcam_katanas.slash_struck.connect(perform_katana_hit)
 		if not WebcamLauncher.is_running():
 			WebcamLauncher.start()
+	else:
+		_katana_left.visible = true
+		_katana_right.visible = true
+		_webcam_katanas.disable()
 	_grenade_aim_controller.visible = false
 	weapon_switched.emit(WEAPON_TYPE.keys()[0])
 
@@ -115,6 +131,7 @@ func _ready() -> void:
 	_katana_left.slash_struck.connect(perform_katana_hit)
 	_katana_right.slash_struck.connect(perform_katana_hit)
 	_combat_feel.setup(_camera_controller.camera)
+	_shockwave.setup(self, _combat_feel)
 	_update_health_ui()
 
 
@@ -149,17 +166,31 @@ func _physics_process(delta: float) -> void:
 
 	_orient_character_to_direction(_last_strong_direction, delta)
 
+	if _dash_cooldown_left > 0.0:
+		_dash_cooldown_left = maxf(0.0, _dash_cooldown_left - delta)
+
+	if ControlMode.is_keyboard() \
+			and Input.is_action_just_pressed("dash") \
+			and is_on_floor() \
+			and not _lunge_active \
+			and not _dash_active \
+			and not _is_katana_slashing():
+		_begin_dash()
+
 	var y_velocity := velocity.y
 	velocity.y = 0.0
 	if _lunge_active:
 		_apply_attack_lunge(delta)
 		velocity = Vector3.ZERO
+	elif _dash_active:
+		_apply_dash(delta)
+		velocity = Vector3.ZERO
 	elif _is_katana_slashing():
 		velocity = Vector3.ZERO
+	elif _move_direction.length_squared() > 0.01:
+		velocity = _move_direction * move_speed
 	else:
-		velocity = velocity.lerp(_move_direction * move_speed, acceleration * delta)
-		if _move_direction.length() == 0 and velocity.length() < stopping_speed:
-			velocity = Vector3.ZERO
+		velocity = velocity.move_toward(Vector3.ZERO, move_speed * acceleration * delta)
 	velocity.y = y_velocity
 
 	if is_aiming:
@@ -181,9 +212,14 @@ func _physics_process(delta: float) -> void:
 			_slash_with_katana(_katana_left)
 		if Input.is_action_just_pressed("katana_slash_right"):
 			_slash_with_katana(_katana_right)
-	else:
+
+	if Input.is_action_just_pressed("shockwave"):
+		_shockwave.try_trigger()
+
+	if ControlMode.is_webcam():
 		_poll_webcam_slash()
-		_update_webcam_katanas()
+		_poll_webcam_shockwave()
+		_update_webcam_katanas(delta)
 		if not _webcam_warned and not CameraInputBridge.is_stream_active():
 			_webcam_warned = true
 			push_warning("Webcam mode: waiting for pose_stream camera feed...")
@@ -228,20 +264,25 @@ func attack() -> void:
 
 func _poll_webcam_slash() -> void:
 	var hand := CameraInputBridge.poll_slash()
-	match hand:
-		"left":
-			_slash_with_katana(_katana_left)
-		"right":
-			_slash_with_katana(_katana_right)
-
-
-func _update_webcam_katanas() -> void:
-	if not CameraInputBridge.has_hands():
+	if hand.is_empty():
 		return
-	var left := CameraInputBridge.get_left_hand_offset()
-	var right := CameraInputBridge.get_right_hand_offset()
-	_katana_left.set_webcam_hand_offset(left.x, left.y)
-	_katana_right.set_webcam_hand_offset(right.x, right.y)
+	_begin_attack_lunge()
+	_webcam_katanas.slash_camera_hand(hand)
+	_character_skin.punch()
+
+
+func _poll_webcam_shockwave() -> void:
+	if CameraInputBridge.poll_shockwave():
+		_shockwave.try_trigger()
+
+
+func _update_webcam_katanas(delta: float) -> void:
+	_webcam_katanas.update_from_bridge(
+		delta,
+		CameraInputBridge.has_hands(),
+		CameraInputBridge.get_left_hand_screen(),
+		CameraInputBridge.get_right_hand_screen(),
+	)
 
 
 func _slash_with_katana(katana: KatanaVisual) -> void:
@@ -253,6 +294,8 @@ func _slash_with_katana(katana: KatanaVisual) -> void:
 
 
 func _is_katana_slashing() -> bool:
+	if ControlMode.is_webcam():
+		return false
 	return _katana_left.is_slashing() or _katana_right.is_slashing()
 
 
@@ -288,6 +331,39 @@ func _apply_attack_lunge(delta: float) -> void:
 	if _lunge_elapsed >= duration:
 		global_position = _lunge_end
 		_lunge_active = false
+
+
+func _begin_dash() -> void:
+	var direction := _move_direction
+	if direction.length_squared() < 0.01:
+		direction = _get_flat_forward()
+	if direction.length_squared() < 0.01:
+		return
+
+	direction = direction.normalized()
+	var travel := _clamp_lunge_travel(global_position, direction, dash_distance)
+	if travel < 0.05:
+		return
+
+	_dash_start = global_position
+	_dash_end = global_position + direction * travel
+	_dash_active = true
+	_dash_elapsed = 0.0
+	_dash_cooldown_left = dash_cooldown
+
+
+func _apply_dash(delta: float) -> void:
+	if not _dash_active:
+		return
+
+	_dash_elapsed += delta
+	var t := clampf(_dash_elapsed / dash_duration, 0.0, 1.0)
+	t = 1.0 - pow(1.0 - t, 3.0)
+	global_position = _dash_start.lerp(_dash_end, t)
+
+	if _dash_elapsed >= dash_duration:
+		global_position = _dash_end
+		_dash_active = false
 
 
 func _compute_attack_lunge() -> Dictionary:
@@ -475,6 +551,8 @@ func _die() -> void:
 	_is_dead = true
 	_lunge_active = false
 	_lunge_target = null
+	_dash_active = false
+	_dash_elapsed = 0.0
 	velocity = Vector3.ZERO
 	player_died.emit()
 
@@ -490,8 +568,12 @@ func respawn() -> void:
 	_lunge_active = false
 	_lunge_elapsed = 0.0
 	_lunge_target = null
+	_dash_active = false
+	_dash_elapsed = 0.0
+	_dash_cooldown_left = 0.0
 	_katana_left.reset_pose()
 	_katana_right.reset_pose()
+	_webcam_katanas.reset_tracking()
 	_health = max_health
 	_update_health_ui()
 	_combat_feel.reset_feedback()
@@ -504,6 +586,11 @@ func _heal_from_kill() -> void:
 	var heal_amount := max_health * kill_heal_percent
 	_health = minf(max_health, _health + heal_amount)
 	_update_health_ui()
+
+
+func register_kill() -> void:
+	_heal_from_kill()
+	_combat_feel.play_kill_feedback()
 
 
 func _update_health_ui() -> void:
@@ -663,8 +750,7 @@ func _damage_katana_target(target: Object, hit_position: Vector3, direction: Vec
 	body.damage(impact_point, force)
 	var killed: bool = was_alive and body.has_method("is_alive") and not body.is_alive()
 	if killed:
-		_heal_from_kill()
-		_combat_feel.play_kill_feedback()
+		register_kill()
 		_refresh_assist_target(body)
 	elif was_alive:
 		_combat_feel.play_slash_feedback()
@@ -912,6 +998,8 @@ func _register_input_actions() -> void:
 		"camera_down": KEY_F,
 		"katana_slash_left": KEY_LEFT,
 		"katana_slash_right": KEY_RIGHT,
+		"shockwave": KEY_G,
+		"dash": KEY_SHIFT,
 	}
 	for action in INPUT_ACTIONS:
 		if InputMap.has_action(action):

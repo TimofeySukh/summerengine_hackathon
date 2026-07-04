@@ -1,0 +1,7 @@
+[gd_resource type="StandardMaterial3D" format=3]
+
+[resource]
+albedo_color = Color(0.82, 0.7, 0.5, 1)
+roughness = 0.9
+uv1_scale = Vector3(2, 2, 2)
+uv1_triplanar = true
