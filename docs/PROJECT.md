@@ -32,7 +32,7 @@ Do not create assets from scratch (placeholder boxes, procedural meshes, etc.). 
 - First-person camera at head height (`player/camera_controller.gd`)
 - WASD movement, jump, mouse look (`player/player.gd`)
 - CC0 low-poly katana model on `MeleeAnchor` (`player/katana/katana.glb`, dook blocks katana via Poly Pizza)
-- Katana parented to the first-person camera as a viewmodel (`PlayerCamera/KatanaVisual`)
+- Katana viewmodel synced to the FPS camera each frame (`CameraController/KatanaVisual`).
 - Melee attack via `Attack` animation and `MeleeAttackArea` hit volume (`player/melee_attack_area.gd`)
 - Character model hidden; katana visible in first person
 
