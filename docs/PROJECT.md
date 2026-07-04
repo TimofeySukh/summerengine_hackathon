@@ -105,6 +105,7 @@ The game currently uses the main menu theme (`mainmenu_1.ogg`) from the **Battle
 - **Reverted surveillance slice** back to first-person WASD + mouse look per user request.
 - Reworked katana attack from rotation swing to straight forward thrust with linear trail VFX.
 - Changed katana attack to epic diagonal slash with arc VFX and combined rotation/position sweep.
+- Reworked diagonal slash to use tween-driven wind/slash/recover instead of euler keyframes.
 - Moved the first-person katana viewmodel to the right side of the camera frame.
 - Tuned the katana viewmodel back toward center after the far-right placement overshot.
 - Nudged the katana viewmodel slightly left for a better right-side frame position.
