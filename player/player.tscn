@@ -27,14 +27,14 @@ length = 0.3
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
-tracks/0/path = NodePath("MeleeAnchor:rotation")
+tracks/0/path = NodePath("../CameraController/PlayerCamera/KatanaVisual:rotation")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
 "times": PackedFloat32Array(0, 0.2),
 "transitions": PackedFloat32Array(1, 1),
 "update": 0,
-"values": [Vector3(0, 0, 0), Vector3(0, 3.14159, 0)]
+"values": [Vector3(0.12, -0.08, 0), Vector3(-0.85, -0.08, 0.2)]
 }
 tracks/1/type = "value"
 tracks/1/imported = false
@@ -71,14 +71,14 @@ length = 0.001
 tracks/0/type = "value"
 tracks/0/imported = false
 tracks/0/enabled = true
-tracks/0/path = NodePath("MeleeAnchor:rotation")
+tracks/0/path = NodePath("../CameraController/PlayerCamera/KatanaVisual:rotation")
 tracks/0/interp = 1
 tracks/0/loop_wrap = true
 tracks/0/keys = {
 "times": PackedFloat32Array(0),
 "transitions": PackedFloat32Array(1),
 "update": 0,
-"values": [Vector3(0, 0, 0)]
+"values": [Vector3(0.12, -0.08, 0)]
 }
 tracks/1/type = "value"
 tracks/1/imported = false
@@ -139,6 +139,9 @@ top_level = true
 attributes = SubResource("CameraAttributesPractical_2ooex")
 fov = 50.0
 
+[node name="KatanaVisual" parent="CameraController/PlayerCamera" instance=ExtResource("5_katana")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.32, -0.24, 0)
+
 [node name="CameraRayCast" type="RayCast3D" parent="CameraController/PlayerCamera"]
 transform = Transform3D(1, 0, -7.10543e-15, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 target_position = Vector3(0, 0, -100)
@@ -163,9 +166,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.25195, 1.075, 0)
 visible = false
 mesh = SubResource("SphereMesh_uex0s")
 skeleton = NodePath("../../..")
-
-[node name="KatanaVisual" parent="CharacterRotationRoot/MeleeAnchor" instance=ExtResource("5_katana")]
-transform = Transform3D(0.866025, 0, 0.5, 0, 1, 0, -0.5, 0, 0.866025, 0.48, 0.9, -0.35)
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="CharacterRotationRoot/MeleeAnchor"]
 root_node = NodePath("../..")
