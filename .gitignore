@@ -6,5 +6,10 @@ bin/
 .env
 *.bak
 
+# Python (tools/camera-controller)
+tools/camera-controller/.venv/
+tools/camera-controller/__pycache__/
+*.pyc
+
 # Summer Engine local-only state
 .summer/local/

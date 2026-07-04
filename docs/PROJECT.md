@@ -88,11 +88,13 @@ The game currently uses the main menu theme (`mainmenu_1.ogg`) from the **Battle
 | `player/player.tscn` | Player scene and katana mount |
 | `enemies/humanoid_chaser.gd` | Chaser movement, contact damage, and death VFX |
 | `enemies/enemy_spawner.gd` | Timed enemy spawning around the player |
+| `tools/camera-controller/` | Real-camera pose/slash bridge (MediaPipe + MJPEG); see `tools/camera-controller/README.md` |
 
 ## Changelog
 
 ### 2026-07-04
 
+- Added `tools/camera-controller/` — Python sidecar for board MJPEG camera, MediaPipe pose, torso yaw, and slash detection (not yet wired into Godot).
 - Created `docs/PROJECT.md` as the living project doc.
 - Added agent workflow rules to `.summer/AGENTS.md` (English in repo, local commits, doc updates).
 - Fixed inverted vertical mouse look by disabling `invert_mouse_y` on the player camera.

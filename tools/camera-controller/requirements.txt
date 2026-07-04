@@ -1,0 +1,6 @@
+mediapipe>=0.10.21
+opencv-python>=4.8
+requests>=2.31
+pynput>=1.7
+numpy>=1.26
+sounddevice>=0.4
