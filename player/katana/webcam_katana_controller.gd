@@ -53,11 +53,13 @@ func update_from_bridge(delta: float, has_hands: bool, left: Vector2, right: Vec
 
 	var right_swing := _swing_amount(right, _prev_right, delta)
 	var left_swing := _swing_amount(left, _prev_left, delta)
+	var right_tilt := _side_tilt_amount(right, _prev_right, delta)
+	var left_tilt := _side_tilt_amount(left, _prev_left, delta)
 	_prev_left = left
 	_prev_right = right
 	# Mirror camera: physical right wrist -> blade A, physical left -> blade B.
-	_blade_a.set_tracking(right.x, right.y, right_swing)
-	_blade_b.set_tracking(left.x, left.y, left_swing)
+	_blade_a.set_tracking(right.x, right.y, right_swing, right_tilt)
+	_blade_b.set_tracking(left.x, left.y, left_swing, -left_tilt)
 
 
 func slash_camera_hand(hand: String) -> void:
@@ -81,3 +83,13 @@ func _swing_amount(current: Vector2, previous: Vector2, delta: float) -> float:
 	var down := clampf(vel.y / 2.5, 0.0, 1.0)
 	var speed := clampf(vel.length() / 3.2, 0.0, 1.0)
 	return speed * (0.25 + 0.75 * down)
+
+
+func _side_tilt_amount(current: Vector2, previous: Vector2, delta: float) -> float:
+	if previous.x < 0.0 or delta <= 0.0:
+		return 0.0
+	var vel := (current - previous) / delta
+	var horizontal := vel.x
+	if absf(horizontal) < 0.3:
+		return clampf((current.x - 0.5) * 0.28, -0.18, 0.18)
+	return clampf(horizontal * 1.05, -0.85, 0.85)

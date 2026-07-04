@@ -59,8 +59,8 @@ class WristBounds:
 
     def summary(self, label: str) -> str:
         return (
-            f"{label}: x [{self.x_min:.2f}..{self.x_max:.2f}] "
-            f"y [{self.y_min:.2f}..{self.y_max:.2f}]"
+            f"{label}: left x={self.x_min:.2f} right x={self.x_max:.2f} "
+            f"top y={self.y_min:.2f} bottom y={self.y_max:.2f}"
         )
 
 
@@ -170,14 +170,16 @@ class CalibratorPhase(Enum):
 
 
 class SweepCalibrator:
-    def __init__(self, *, path: Path = DEFAULT_CALIBRATION_PATH):
+    def __init__(self, *, path: Path = DEFAULT_CALIBRATION_PATH, seed: HandCalibration | None = None):
         self.path = path
+        self._seed = (seed or HandCalibration.default()).copy()
         self.phase = CalibratorPhase.INTRO
         self.calibration = HandCalibration.default()
         self._phase_started = time.monotonic()
         self._message = ""
         self._error = ""
         self._sample_count = 0
+        self._has_saved_seed = seed is not None
 
     @property
     def blocks_tracking(self) -> bool:
@@ -192,16 +194,16 @@ class SweepCalibrator:
         return self.phase in (CalibratorPhase.DONE, CalibratorPhase.SKIPPED)
 
     def skip(self) -> None:
-        self.calibration = HandCalibration.default()
+        self.calibration = self._seed.copy()
         self.phase = CalibratorPhase.SKIPPED
-        self._message = "Defaults."
+        self._message = "Сохранённые границы." if self._has_saved_seed else "Дефолтные границы."
 
     def start_sweep(self) -> None:
         self.calibration = HandCalibration.default()
         self._sample_count = 0
         self.phase = CalibratorPhase.SWEEP
         self._phase_started = time.monotonic()
-        self._message = "Веди вытянутыми руками сверху вниз по бокам."
+        self._message = "Вытянутые руки: веди сверху вниз по бокам."
         self._error = ""
 
     def handle_key(self, key: int) -> None:
@@ -221,7 +223,10 @@ class SweepCalibrator:
 
     def update(self, landmarks) -> None:
         if self.phase == CalibratorPhase.INTRO:
-            self._message = "SPACE — калибровка (руки вдоль боков, сверху вниз)."
+            self._message = (
+                "SPACE — калибровка: вытянутые руки, сверху вниз по бокам. "
+                "Для каждой руки запишем верх, левый и правый край."
+            )
             return
         if self.phase != CalibratorPhase.SWEEP:
             return
@@ -265,12 +270,20 @@ class SweepCalibrator:
 
         lines = ["Калибровка рук", "", self._message]
         if self.phase == CalibratorPhase.INTRO:
-            lines += ["", "SPACE — начать", "S — дефолт", "Q — выход"]
+            lines += [
+                "",
+                "Левая рука: крайний левый -> левый край экрана в игре,",
+                "крайний правый -> правый край экрана.",
+                "",
+                "SPACE — начать замах",
+                "S — пропустить (сохранённые или дефолт)",
+                "Q — выход",
+            ]
         elif self.phase == CalibratorPhase.SWEEP:
             pct = int(self.sweep_progress() * 100)
             lines += [
                 "",
-                f"Замахай руками по бокам... {pct}%",
+                f"Замахай вытянутыми руками по бокам... {pct}%",
                 f"кадров: {self._sample_count}",
                 "SPACE — закончить раньше",
                 *self.calibration.summary_lines(),

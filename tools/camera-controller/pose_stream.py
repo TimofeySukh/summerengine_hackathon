@@ -381,13 +381,19 @@ def main() -> int:
         print(f"Arrow keys: left hand -> Left, right hand -> Right ({key_controller.backend})")
 
     baseline = load_calibration(DEFAULT_CALIBRATION_PATH) or HandCalibration.default()
-    calibrator = SweepCalibrator(path=DEFAULT_CALIBRATION_PATH)
+    saved_bounds = load_calibration(DEFAULT_CALIBRATION_PATH)
+    calibrator = SweepCalibrator(path=DEFAULT_CALIBRATION_PATH, seed=baseline)
     bounds_tracker: RuntimeBoundsTracker | None = None
     if args.skip_calibration:
         calibrator.skip()
         bounds_tracker = RuntimeBoundsTracker(baseline, path=DEFAULT_CALIBRATION_PATH)
         print("Sweep calibration skipped.")
-    elif load_calibration(DEFAULT_CALIBRATION_PATH) is not None:
+    elif args.game_bridge:
+        if saved_bounds is not None:
+            print(f"Game mode: SPACE — новая калибровка, S — использовать {DEFAULT_CALIBRATION_PATH.name}")
+        else:
+            print("Game mode: SPACE — калибровка замахом (вытянутые руки, сверху вниз по бокам).")
+    elif saved_bounds is not None:
         calibrator.skip()
         bounds_tracker = RuntimeBoundsTracker(baseline, path=DEFAULT_CALIBRATION_PATH)
         print(f"Loaded bounds from {DEFAULT_CALIBRATION_PATH.name}")
@@ -471,12 +477,14 @@ def main() -> int:
                     poses_since_report += 1
                     if calibrator.blocks_tracking:
                         calibrator.update(last_landmarks)
-                        if calibrator.ready and bounds_tracker is None:
-                            bounds_tracker = RuntimeBoundsTracker(
-                                calibrator.calibration,
-                                path=DEFAULT_CALIBRATION_PATH,
-                            )
-                    else:
+
+                    if calibrator.ready and bounds_tracker is None:
+                        bounds_tracker = RuntimeBoundsTracker(
+                            calibrator.calibration,
+                            path=DEFAULT_CALIBRATION_PATH,
+                        )
+
+                    if not calibrator.blocks_tracking:
                         hand_frame = compute_hand_frame(last_landmarks)
                         center = compute_torso_center(last_landmarks)
                         if hand_frame is not None and bounds_tracker is not None and center is not None:
@@ -505,6 +513,11 @@ def main() -> int:
                     cv2.imshow(window_name, frame)
                     key = cv2.waitKey(1) & 0xFF
                     calibrator.handle_key(key)
+                    if calibrator.ready and bounds_tracker is None:
+                        bounds_tracker = RuntimeBoundsTracker(
+                            calibrator.calibration,
+                            path=DEFAULT_CALIBRATION_PATH,
+                        )
                     if key in (ord("q"), 27):
                         break
                 elif not got_new_frame:
@@ -557,7 +570,8 @@ def main() -> int:
                 if key in (ord("q"), 27):
                     break
                 if key == ord("c"):
-                    calibrator = SweepCalibrator(path=DEFAULT_CALIBRATION_PATH)
+                    seed = bounds_tracker.baseline.copy() if bounds_tracker is not None else baseline
+                    calibrator = SweepCalibrator(path=DEFAULT_CALIBRATION_PATH, seed=seed)
                     bounds_tracker = None
                     print("Recalibrating bounds...")
             elif not got_new_frame:

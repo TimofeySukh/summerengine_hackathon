@@ -23,6 +23,8 @@ const HANDLE_PLANE_Z := -0.42
 @export var swing_rise := 16.0
 @export var swing_fall := 10.0
 @export var handle_screen_margin := 52.0
+@export var max_side_tilt := 0.55
+@export var tilt_smoothing := 16.0
 
 @onready var _pivot: Node3D = $SlashPivot
 @onready var _katana_mesh: Node3D = $SlashPivot/Katana
@@ -31,6 +33,8 @@ var _camera: Camera3D
 var _target_pos := Vector3.ZERO
 var _swing_target := 0.0
 var _swing_current := 0.0
+var _tilt_target := 0.0
+var _tilt_current := 0.0
 
 
 func setup(camera: Camera3D, slot: HandSlot = HandSlot.RIGHT) -> void:
@@ -50,11 +54,14 @@ func set_active(active: bool) -> void:
 	else:
 		_swing_target = 0.0
 		_swing_current = 0.0
+		_tilt_target = 0.0
+		_tilt_current = 0.0
 		_pivot.rotation = IDLE_PIVOT
 
 
-func set_tracking(norm_x: float, norm_y: float, swing: float) -> void:
+func set_tracking(norm_x: float, norm_y: float, swing: float, side_tilt: float = 0.0) -> void:
 	_swing_target = clampf(swing, 0.0, 1.0)
+	_tilt_target = clampf(side_tilt, -max_side_tilt, max_side_tilt)
 	if _camera == null:
 		return
 
@@ -78,7 +85,9 @@ func _process(delta: float) -> void:
 
 	var swing_rate := swing_rise if _swing_target > _swing_current else swing_fall
 	_swing_current = lerpf(_swing_current, _swing_target, minf(1.0, delta * swing_rate))
-	_pivot.rotation = IDLE_PIVOT.lerp(SWING_PIVOT, _swing_current)
+	_tilt_current = lerpf(_tilt_current, _tilt_target, minf(1.0, delta * tilt_smoothing))
+	var base_pivot := IDLE_PIVOT.lerp(SWING_PIVOT, _swing_current)
+	_pivot.rotation = base_pivot + Vector3(0.0, 0.0, _tilt_current)
 
 
 func _screen_to_handle_local(screen: Vector2) -> Vector3:

@@ -208,7 +208,7 @@ theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
 theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 text = "Play"
 
-[node name="PlayWebcamButton" type="Button" parent="SafeArea/Layout/MenuColumn"]
+[node name="PlayWebcamButton" type="Button" parent="SafeArea/Layout/MenuColumn" unique_id=1314491524]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(360, 54)
 layout_mode = 2
@@ -234,7 +234,7 @@ theme_override_styles/pressed = SubResource("StyleBoxFlat_button_pressed")
 theme_override_styles/hover = SubResource("StyleBoxFlat_button_hover")
 text = "Sandbox"
 
-[node name="SandboxWebcamButton" type="Button" parent="SafeArea/Layout/MenuColumn"]
+[node name="SandboxWebcamButton" type="Button" parent="SafeArea/Layout/MenuColumn" unique_id=133700925]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(360, 54)
 layout_mode = 2

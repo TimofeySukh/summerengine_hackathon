@@ -49,13 +49,28 @@ When `--game-bridge` is on, slash and torso-yaw events go to Godot autoload `Cam
 
 With `--game-bridge`, local arrow-key emulation is off unless you pass `--also-keys`. Loud mic bursts (default RMS ≥ 0.13) also trigger shockwave every ~3.5s. Saying "WAVE" into the board microphone sends the voice-wave event unless `--no-voice-wave` is passed. Without `--game-bridge`, torso yaw can hold `Q` / `E` for camera rotation and wrist slashes tap the arrow keys.
 
+## Hand calibration
+
+On game start (`--game-bridge`), a sweep calibration screen appears:
+
+1. Stand facing the camera, press **SPACE**.
+2. With **arms extended**, sweep **top to bottom along your sides** (~14 s).
+3. For each wrist we record **top**, **left**, and **right** extremes; left wrist min X maps to the **left edge** of the in-game katana range, max X to the **right edge**.
+4. Press **S** to skip and reuse `hand_calibration.json`, or **C** during play to recalibrate.
+
+During gameplay, bounds **auto-expand** while your torso stays centered. If you move away from center, bounds reset to the last saved safe values after a **2 s buffer**, then resume accumulating.
+
+Pass `--skip-calibration` to bypass the intro entirely.
+
 ## Modules
 
 | File | Role |
 |------|------|
 | `pose_stream.py` | Main loop: MJPEG → pose → HUD, torso motion, slash FX, optional key emulation |
 | `mjpeg_reader.py` | Persistent HTTP MJPEG capture |
-| `hand_tracker.py` | Torso center + wrist offsets for viewmodel placement |
+| `hand_calibration.py` | Per-wrist sweep calibration + runtime auto-tune (2s body-move buffer) |
+| `hand_calibration.json` | Saved wrist bounds (gitignored, local per machine) |
+| `hand_tracker.py` | Torso center + wrist positions for katana mapping |
 | `slash_detector.py` | Wrist-speed slash detection (left/right hand) |
 | `key_controller.py` | Q/E camera motion and arrow-key slash emulation via pynput |
 | `game_bridge.py` | UDP sender to Godot `CameraInputBridge` (port 9847) |
