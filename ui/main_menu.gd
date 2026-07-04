@@ -32,13 +32,11 @@ func _on_control_mode_selected(index: int) -> void:
 
 func _update_control_hint() -> void:
 	if ControlMode.is_webcam():
-		_control_hint.text = (
-			"Run before Play:\n"
-			"cd tools/camera-controller && python pose_stream.py --game-bridge\n"
-			"Left hand slash → left katana. Right hand → right katana. Torso turn → look."
-		)
+		_control_hint.text = """Run before Play:
+cd tools/camera-controller && python pose_stream.py --game-bridge
+Left hand slash -> left katana. Right hand -> right katana. Torso turn -> look."""
 	else:
-		_control_hint.text = "WASD move · mouse look · ←/→ katana slashes"
+		_control_hint.text = "WASD move · mouse look · <-/-> katana slashes"
 
 
 func _on_play_pressed() -> void:
