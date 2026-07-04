@@ -79,3 +79,4 @@ Do not create assets from scratch (placeholder boxes, procedural meshes, etc.). 
 - Documented asset policy: prefer ready-made assets over creating placeholders.
 - Swapped stubby katana for dook blocks model; reduced FPS scale and tuned materials for readability.
 - Parented katana to the FPS camera so it stays visible in view.
+- Moved katana to the camera pivot with a forward offset; added `player/katana/PREVIEW.jpg` for asset preview.
