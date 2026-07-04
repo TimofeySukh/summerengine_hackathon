@@ -29,13 +29,18 @@ var _intermission_timer := 0.0
 var _spawn_timer := 0.0
 var _spawn_interval := 1.0
 var _intermission_message := ""
+var _sandbox_mode := false
 
 
 func _ready() -> void:
 	add_to_group("run_director")
+	_sandbox_mode = GameSettings.is_sandbox_mode()
 	_load_best()
 	call_deferred("_bind_spawner")
-	call_deferred("start_run")
+	if _sandbox_mode:
+		call_deferred("_start_sandbox")
+	else:
+		call_deferred("start_run")
 
 
 func _bind_spawner() -> void:
@@ -49,6 +54,10 @@ func _process(delta: float) -> void:
 		return
 
 	run_time += delta
+	if _sandbox_mode:
+		_emit_stats_if_changed()
+		return
+
 	match phase:
 		Phase.INTERMISSION:
 			_process_intermission(delta)
@@ -66,14 +75,34 @@ func start_run() -> void:
 	run_time = 0.0
 	_enemies_remaining = 0
 	_spawn_timer = 0.0
-	if _spawner != null and _spawner.has_method("clear_all_enemies"):
-		_spawner.clear_all_enemies()
+	if _spawner != null:
+		_spawner.set_process(true)
+		if _spawner.has_method("clear_all_enemies"):
+			_spawner.clear_all_enemies()
 	_begin_intermission(true)
 
 
 func restart_run() -> void:
 	Engine.time_scale = 1.0
-	start_run()
+	if _sandbox_mode:
+		_start_sandbox()
+	else:
+		start_run()
+
+
+func _start_sandbox() -> void:
+	current_wave = 0
+	total_kills = 0
+	run_time = 0.0
+	_enemies_remaining = 0
+	_intermission_message = ""
+	phase = Phase.INTERMISSION
+	_restore_normal_time()
+	if _spawner != null:
+		if _spawner.has_method("clear_all_enemies"):
+			_spawner.clear_all_enemies()
+		_spawner.set_process(false)
+	_emit_stats_if_changed(true)
 
 
 func notify_enemy_defeated() -> void:
@@ -106,6 +135,7 @@ func get_snapshot() -> Dictionary:
 		"phase": phase,
 		"intermission_message": _intermission_message,
 		"enemies_remaining": _enemies_remaining,
+		"sandbox": _sandbox_mode,
 	}
 
 
@@ -137,6 +167,9 @@ func _start_wave() -> void:
 
 
 func _process_intermission(delta: float) -> void:
+	if not is_equal_approx(Engine.time_scale, 1.0):
+		_restore_normal_time()
+
 	_intermission_timer -= delta
 	if _intermission_timer <= 1.0 and current_wave > 0 and _intermission_message.begins_with("WAVE"):
 		_intermission_message = "WAVE %d INCOMING" % (current_wave + 1)
@@ -174,13 +207,14 @@ func _update_best_if_better() -> void:
 
 func _emit_stats_if_changed(force := false) -> void:
 	var snapshot := get_snapshot()
-	var signature := "%s|%s|%s|%s|%s|%s" % [
+	var signature := "%s|%s|%s|%s|%s|%s|%s" % [
 		snapshot.get("wave", 0),
 		snapshot.get("kills", 0),
 		int(float(snapshot.get("time", 0.0))),
 		snapshot.get("phase", 0),
 		snapshot.get("intermission_message", ""),
 		snapshot.get("enemies_remaining", 0),
+		snapshot.get("sandbox", false),
 	]
 	if not force and signature == _last_stats_signature:
 		return

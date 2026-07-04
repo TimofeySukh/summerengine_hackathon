@@ -35,6 +35,16 @@ func _bind_director() -> void:
 
 
 func _on_stats_updated(snapshot: Dictionary) -> void:
+	if snapshot.get("sandbox", false):
+		_wave_value.text = "—"
+		_kills_value.text = "—"
+		_time_value.text = _format_time(float(snapshot.get("time", 0.0)))
+		_best_value.text = "Sandbox mode"
+		_wave_remaining.text = "no enemies"
+		_last_banner_message = ""
+		_hide_banner()
+		return
+
 	_wave_value.text = str(snapshot.get("wave", 0))
 	_kills_value.text = str(snapshot.get("kills", 0))
 	_time_value.text = _format_time(float(snapshot.get("time", 0.0)))
@@ -116,12 +126,12 @@ func _style_panels() -> void:
 	panel_style.content_margin_right = 14.0
 	panel_style.content_margin_bottom = 10.0
 
-	for panel_name in ["WavePanel", "KillsPanel", "TimePanel"]:
-		var panel := get_node_or_null("TopBar/" + panel_name if panel_name != "WavePanel" else "TopBar/WavePanel")
-		if panel_name == "KillsPanel":
-			panel = get_node_or_null("TopBar/StatsPanel/KillsPanel")
-		elif panel_name == "TimePanel":
-			panel = get_node_or_null("TopBar/StatsPanel/TimePanel")
+	for panel_path in [
+		"TopMargin/TopBar/WavePanel",
+		"TopMargin/TopBar/RightColumn/StatsPanel/KillsPanel",
+		"TopMargin/TopBar/RightColumn/StatsPanel/TimePanel",
+	]:
+		var panel := get_node_or_null(panel_path)
 		if panel is PanelContainer:
 			(panel as PanelContainer).add_theme_stylebox_override("panel", panel_style)
 

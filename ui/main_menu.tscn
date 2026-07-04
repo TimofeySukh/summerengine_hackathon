@@ -123,6 +123,16 @@ theme_override_fonts/font = ExtResource("2_font_bold")
 theme_override_font_sizes/font_size = 28
 text = "Play"
 
+[node name="SandboxButton" type="Button" parent="CenterContainer/MarginContainer/VBox" unique_id=918273645]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(320, 56)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_default_cursor_shape = 2
+theme_override_fonts/font = ExtResource("3_font_medium")
+theme_override_font_sizes/font_size = 24
+text = "Sandbox (No Enemies)"
+
 [node name="QuitButton" type="Button" parent="CenterContainer/MarginContainer/VBox" unique_id=657250045]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(320, 56)

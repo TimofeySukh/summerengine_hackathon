@@ -14,33 +14,37 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("1_hud")
 
-[node name="TopBar" type="HBoxContainer" parent="."]
+[node name="TopMargin" type="MarginContainer" parent="."]
 layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
-offset_left = 28.0
-offset_top = 22.0
-offset_right = -28.0
-offset_bottom = 92.0
+offset_bottom = 120.0
 grow_horizontal = 2
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 22
+theme_override_constants/margin_right = 28
+
+[node name="TopBar" type="HBoxContainer" parent="TopMargin"]
+layout_mode = 2
 theme_override_constants/separation = 18
 
-[node name="WavePanel" type="PanelContainer" parent="TopBar"]
+[node name="WavePanel" type="PanelContainer" parent="TopMargin/TopBar"]
 custom_minimum_size = Vector2(180, 0)
 layout_mode = 2
+size_flags_vertical = 0
 
-[node name="WaveVBox" type="VBoxContainer" parent="TopBar/WavePanel"]
+[node name="WaveVBox" type="VBoxContainer" parent="TopMargin/TopBar/WavePanel"]
 layout_mode = 2
 theme_override_constants/separation = 2
 
-[node name="WaveLabel" type="Label" parent="TopBar/WavePanel/WaveVBox"]
+[node name="WaveLabel" type="Label" parent="TopMargin/TopBar/WavePanel/WaveVBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.55, 0.68, 0.92, 1)
 theme_override_fonts/font = ExtResource("3_font_medium")
 theme_override_font_sizes/font_size = 14
 text = "WAVE"
 
-[node name="WaveValue" type="Label" parent="TopBar/WavePanel/WaveVBox"]
+[node name="WaveValue" type="Label" parent="TopMargin/TopBar/WavePanel/WaveVBox"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.95, 0.88, 1)
@@ -48,7 +52,7 @@ theme_override_fonts/font = ExtResource("2_font_bold")
 theme_override_font_sizes/font_size = 34
 text = "0"
 
-[node name="WaveRemaining" type="Label" parent="TopBar/WavePanel/WaveVBox"]
+[node name="WaveRemaining" type="Label" parent="TopMargin/TopBar/WavePanel/WaveVBox"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(0.72, 0.78, 0.9, 0.85)
@@ -56,30 +60,38 @@ theme_override_fonts/font = ExtResource("3_font_medium")
 theme_override_font_sizes/font_size = 13
 text = "incoming"
 
-[node name="Spacer" type="Control" parent="TopBar"]
+[node name="Spacer" type="Control" parent="TopMargin/TopBar"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="StatsPanel" type="HBoxContainer" parent="TopBar"]
+[node name="RightColumn" type="VBoxContainer" parent="TopMargin/TopBar"]
 layout_mode = 2
+size_flags_horizontal = 8
+theme_override_constants/separation = 6
+alignment = 2
+
+[node name="StatsPanel" type="HBoxContainer" parent="TopMargin/TopBar/RightColumn"]
+layout_mode = 2
+size_flags_horizontal = 8
 theme_override_constants/separation = 14
+alignment = 2
 
-[node name="KillsPanel" type="PanelContainer" parent="TopBar/StatsPanel"]
-custom_minimum_size = Vector2(150, 0)
+[node name="KillsPanel" type="PanelContainer" parent="TopMargin/TopBar/RightColumn/StatsPanel"]
+custom_minimum_size = Vector2(132, 0)
 layout_mode = 2
 
-[node name="KillsVBox" type="VBoxContainer" parent="TopBar/StatsPanel/KillsPanel"]
+[node name="KillsVBox" type="VBoxContainer" parent="TopMargin/TopBar/RightColumn/StatsPanel/KillsPanel"]
 layout_mode = 2
 theme_override_constants/separation = 2
 
-[node name="KillsLabel" type="Label" parent="TopBar/StatsPanel/KillsPanel/KillsVBox"]
+[node name="KillsLabel" type="Label" parent="TopMargin/TopBar/RightColumn/StatsPanel/KillsPanel/KillsVBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.35, 0.28, 1)
 theme_override_fonts/font = ExtResource("3_font_medium")
 theme_override_font_sizes/font_size = 14
 text = "KILLS"
 
-[node name="KillsValue" type="Label" parent="TopBar/StatsPanel/KillsPanel/KillsVBox"]
+[node name="KillsValue" type="Label" parent="TopMargin/TopBar/RightColumn/StatsPanel/KillsPanel/KillsVBox"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.95, 0.88, 1)
@@ -87,22 +99,22 @@ theme_override_fonts/font = ExtResource("2_font_bold")
 theme_override_font_sizes/font_size = 28
 text = "0"
 
-[node name="TimePanel" type="PanelContainer" parent="TopBar/StatsPanel"]
-custom_minimum_size = Vector2(120, 0)
+[node name="TimePanel" type="PanelContainer" parent="TopMargin/TopBar/RightColumn/StatsPanel"]
+custom_minimum_size = Vector2(108, 0)
 layout_mode = 2
 
-[node name="TimeVBox" type="VBoxContainer" parent="TopBar/StatsPanel/TimePanel"]
+[node name="TimeVBox" type="VBoxContainer" parent="TopMargin/TopBar/RightColumn/StatsPanel/TimePanel"]
 layout_mode = 2
 theme_override_constants/separation = 2
 
-[node name="TimeLabel" type="Label" parent="TopBar/StatsPanel/TimePanel/TimeVBox"]
+[node name="TimeLabel" type="Label" parent="TopMargin/TopBar/RightColumn/StatsPanel/TimePanel/TimeVBox"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.55, 0.68, 0.92, 1)
 theme_override_fonts/font = ExtResource("3_font_medium")
 theme_override_font_sizes/font_size = 14
 text = "TIME"
 
-[node name="TimeValue" type="Label" parent="TopBar/StatsPanel/TimePanel/TimeVBox"]
+[node name="TimeValue" type="Label" parent="TopMargin/TopBar/RightColumn/StatsPanel/TimePanel/TimeVBox"]
 unique_name_in_owner = true
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.95, 0.88, 1)
@@ -110,17 +122,10 @@ theme_override_fonts/font = ExtResource("2_font_bold")
 theme_override_font_sizes/font_size = 28
 text = "0:00"
 
-[node name="BestValue" type="Label" parent="."]
+[node name="BestValue" type="Label" parent="TopMargin/TopBar/RightColumn"]
 unique_name_in_owner = true
-layout_mode = 1
-anchors_preset = 1
-anchor_left = 1.0
-anchor_right = 1.0
-offset_left = -320.0
-offset_top = 96.0
-offset_right = -28.0
-offset_bottom = 122.0
-grow_horizontal = 0
+layout_mode = 2
+size_flags_horizontal = 8
 theme_override_colors/font_color = Color(0.62, 0.7, 0.86, 0.9)
 theme_override_fonts/font = ExtResource("3_font_medium")
 theme_override_font_sizes/font_size = 15
@@ -142,6 +147,7 @@ offset_right = 280.0
 offset_bottom = 20.0
 grow_horizontal = 2
 grow_vertical = 2
+mouse_filter = 2
 
 [node name="BannerPanel" type="PanelContainer" parent="IntermissionBanner"]
 layout_mode = 1

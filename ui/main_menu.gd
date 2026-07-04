@@ -3,6 +3,7 @@ extends Control
 const GAME_SCENE := "res://main.tscn"
 
 @onready var _play_button: Button = %PlayButton
+@onready var _sandbox_button: Button = %SandboxButton
 @onready var _quit_button: Button = %QuitButton
 @onready var _control_mode: OptionButton = %ControlModeOption
 @onready var _control_hint: Label = %ControlHint
@@ -11,6 +12,7 @@ const GAME_SCENE := "res://main.tscn"
 func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 	_play_button.pressed.connect(_on_play_pressed)
+	_sandbox_button.pressed.connect(_on_sandbox_pressed)
 	_quit_button.pressed.connect(_on_quit_pressed)
 	_control_mode.item_selected.connect(_on_control_mode_selected)
 	_setup_control_mode_options()
@@ -40,6 +42,13 @@ Left hand slash -> left katana. Right hand -> right katana. Torso turn -> look."
 
 
 func _on_play_pressed() -> void:
+	GameSettings.set_survival_mode()
+	CameraInputBridge.reset_session()
+	get_tree().change_scene_to_file(GAME_SCENE)
+
+
+func _on_sandbox_pressed() -> void:
+	GameSettings.set_sandbox_mode()
 	CameraInputBridge.reset_session()
 	get_tree().change_scene_to_file(GAME_SCENE)
 
