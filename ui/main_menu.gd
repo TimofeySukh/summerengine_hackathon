@@ -1,6 +1,6 @@
 extends Control
 
-const GAME_SCENE := "res://main.tscn"
+const GAME_SCENE := "res://levels/desert_arena.tscn"
 
 @onready var _play_button: Button = %PlayButton
 @onready var _sandbox_button: Button = %SandboxButton

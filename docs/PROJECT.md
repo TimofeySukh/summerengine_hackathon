@@ -35,9 +35,13 @@ Do not create assets from scratch (placeholder boxes, procedural meshes, etc.). 
 
 ## Music & Sound Licensing
 
-The game currently uses the main menu theme (`mainmenu_1.ogg`) from the **BattleBlock Theater OST** (composed by Patric Catani, Will Stamper, Analogik, etc.).
-- **Copyright Status:** Copyrighted by The Behemoth.
-- **License / Policy:** Used strictly for non-commercial prototyping and meme purposes. If the project progresses beyond a simple prototype/meme game, this soundtrack **must be replaced** with royalty-free or custom/original music to avoid copyright infringement.
+The game currently uses the following tracks:
+1. **Main Menu Music**: "Dansez" by Fasion (`dansez_menu.mp3`), sourced from the Epidemic Sound library.
+   - **Copyright Status:** Copyrighted by Fasion / Epidemic Sound.
+   - **License / Policy:** Used for non-commercial prototyping. Requires an Epidemic Sound subscription/license for public or commercial release.
+2. **Gameplay Music**: Main menu theme (`battleblock_theater_menu.ogg`) from the **BattleBlock Theater OST** (composed by Patric Catani, Will Stamper, Analogik, etc.).
+   - **Copyright Status:** Copyrighted by The Behemoth.
+   - **License / Policy:** Used strictly for non-commercial prototyping and meme purposes. If the project progresses beyond a simple prototype/meme game, this soundtrack **must be replaced** with royalty-free or custom/original music to avoid copyright infringement.
 
 ## Current State
 
@@ -64,7 +68,9 @@ The game currently uses the main menu theme (`mainmenu_1.ogg`) from the **Battle
 
 ### Music
 
-- Autoload [MusicManager](file:///Users/Tim/racegame/level/music/music_manager.gd) loads and plays the BattleBlock Theater main menu theme on loop in the background at a moderate volume (`-12.0 dB`).
+- Autoload [MusicManager](file:///Users/Tim/racegame/level/music/music_manager.gd) dynamically manages the game's soundtrack based on the active scene:
+  - **Main Menu (`ui/main_menu.tscn`)**: Plays "Dansez" by Fasion (`dansez_menu.mp3`) at `-10.0 dB`.
+  - **Gameplay (`levels/desert_arena.tscn`)**: Plays the BattleBlock Theater main menu theme (`battleblock_theater_menu.ogg`) at `-12.0 dB`.
 
 ### Menus
 
@@ -140,3 +146,4 @@ The game currently uses the main menu theme (`mainmenu_1.ogg`) from the **Battle
 - Reworked chaser AI: orbit slots around the player, local separation, striker/flanker/lurker roles, and one-at-a-time commit attacks.
 - Added wave survival loop (`RunDirector`), neon HUD, death-screen run stats, and katana combat feel (shake, hit-stop, slash/kill audio).
 - Fetched the real-camera sidecar and set its default board API host to the Tailscale MagicDNS name `cph14.tailcfa96c.ts.net`.
+- Configured dynamic soundtrack switching: main menu plays "Dansez" by Fasion (`dansez_menu.mp3`) and gameplay plays the BattleBlock Theater theme (`battleblock_theater_menu.ogg`).

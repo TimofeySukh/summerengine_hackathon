@@ -160,7 +160,7 @@ func _try_damage_player(target: Node3D) -> void:
 		return
 
 	if target.has_method("take_damage"):
-		target.take_damage(contact_damage)
+		target.take_damage(contact_damage, self)
 		_damage_timer = damage_cooldown
 
 
