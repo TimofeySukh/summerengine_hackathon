@@ -122,11 +122,12 @@ The game currently uses the main menu theme (`mainmenu_1.ogg`) from the **Battle
 - Rebuilt katana slash as a kesagiri-style keyframed swing: hilt pivot, quaternion slerp, wind/strike/follow-through timing.
 - Removed broken world-scale slash trail VFX; simplified viewmodel cut to a short diagonal pivot swing synced with camera hit at slash peak.
 - Rebuilt katana slash as a single-axis tip arc: blade forward from hilt pivot, diagonal upper-left to lower-right rotation plane.
+- Locked approved FPS katana viewmodel placement; restored diagonal wind-up slash arc on the tuned idle pose.
 - Integrated the BattleBlock Theater main menu theme as a looping background track via the new `MusicManager` autoload singleton.
 - Added a licensing warning in the project documentation noting that the soundtrack is copyrighted and must be replaced if the project goes beyond a meme game.
 - Added main menu (`ui/main_menu.tscn`) and in-game pause menu (`ui/pause_menu.tscn`) with Esc toggle, cursor release, Continue, and return to main menu.
 - Updated `enemies/enemy_spawner.gd` and `main.tscn` to spawn enemies in front of the player (within a field-of-view cone) once per second.
-- Enhanced the spawner to spawn a random mix of three high-quality enemy assets: the custom mummy, the `beetle_bot`, and the `bee_bot` (injecting target references to activate them immediately).
-- Generated a seamless low-poly mummy bandage texture `enemies/mummy_bandages.jpg` using AI and applied it to the humanoid chaser meshes via triplanar mapping.
-- Adjusted the humanoid chaser limbs in `enemies/humanoid_chaser.tscn` to pose with outstretched arms, matching a classic mummy/zombie stance.
+- Downloaded a 3D Toon Mummy model (`enemies/toon_mummy/ToonMummyOptimized.gltf`) from the PatrickRyanMS/SampleModels repository.
+- Replaced the procedural capsule-based meshes in `enemies/humanoid_chaser.tscn` with the 3D Toon Mummy model scaled up to 4.5.
+
 
