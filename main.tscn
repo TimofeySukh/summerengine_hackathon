@@ -4,6 +4,7 @@
 [ext_resource type="PackedScene" path="res://enemies/humanoid_chaser.tscn" id="2_enemy"]
 [ext_resource type="Script" uid="uid://blrf6nremkb0r" path="res://enemies/enemy_spawner.gd" id="3_spawner"]
 [ext_resource type="PackedScene" uid="uid://c8pausemenu01" path="res://ui/pause_menu.tscn" id="4_pause"]
+[ext_resource type="PackedScene" uid="uid://c8deathscreen01" path="res://ui/death_screen.tscn" id="5_death"]
 
 [sub_resource type="Environment" id="Environment_night"]
 background_mode = 1
@@ -163,3 +164,5 @@ transform = Transform3D(0.866025, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866025, -13, 0.2, 
 transform = Transform3D(0.866025, 0, 0.5, 0, 1, 0, -0.5, 0, 0.866025, 13, 0.2, 1)
 
 [node name="PauseMenu" parent="." instance=ExtResource("4_pause")]
+
+[node name="DeathScreen" parent="." instance=ExtResource("5_death")]

@@ -129,5 +129,6 @@ The game currently uses the main menu theme (`mainmenu_1.ogg`) from the **Battle
 - Updated `enemies/enemy_spawner.gd` and `main.tscn` to spawn enemies in front of the player (within a field-of-view cone) once per second.
 - Downloaded a 3D Toon Mummy model (`enemies/toon_mummy/ToonMummyOptimized.gltf`) from the PatrickRyanMS/SampleModels repository.
 - Replaced the procedural capsule-based meshes in `enemies/humanoid_chaser.tscn` with the 3D Toon Mummy model scaled up to 4.5.
-
+- Added death screen (`ui/death_screen.tscn`): pauses on player death, Restart respawns at arena start, Main Menu returns to title.
+- Player no longer instant-respawns on death; katana kills heal 25% max HP (`kill_heal_percent` on Player).
 

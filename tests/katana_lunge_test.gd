@@ -23,58 +23,52 @@ func _run_test() -> void:
 
 	var player := PLAYER_SCENE.instantiate() as Player
 	test_root.add_child(player)
-	player.position = Vector3(0.0, 1.0, 0.0)
+	player.global_position = Vector3(0.0, 1.0, 0.0)
 
 	var enemy := ENEMY_SCENE.instantiate() as Node3D
 	test_root.add_child(enemy)
-	enemy.position = Vector3(0.0, 1.0, 2.5)
+	enemy.global_position = Vector3(0.0, 1.0, 6.0)
 
-	for _i in 3:
+	for _i in 5:
 		await process_frame
 
 	var failures: Array[String] = []
-
-	# 1) Direction math toward enemy
 	var toward := player._lunge_toward_node(enemy, player.global_position)
-	if toward.direction.dot(Vector3(0.0, 0.0, 1.0)) < 0.9:
-		failures.append("lunge direction should point at enemy on +Z")
-	if toward.distance < 1.0:
-		failures.append("lunge distance toward enemy should be > 1.0, got %.2f" % toward.distance)
+	var flat_dist := Vector2(
+		enemy.global_position.x - player.global_position.x,
+		enemy.global_position.z - player.global_position.z
+	).length()
+	var expected_travel := flat_dist - player.attack_lunge_stop_margin
 
-	# 2) test_move fix — player actually travels when lunge is active
-	var start_pos := player.global_position
-	player._lunge_direction = Vector3(0.0, 0.0, 1.0)
-	player._lunge_remaining = 1.0
-	player._lunge_speed = 12.0
-	for _i in 8:
-		player._apply_attack_lunge(1.0 / 60.0)
-	var delta := player.global_position - start_pos
-	if delta.z < 0.35:
-		failures.append("apply_attack_lunge moved %.3f on Z, expected >= 0.35" % delta.z)
-	if player._lunge_remaining > 0.05:
-		failures.append("lunge should consume remaining distance, left %.3f" % player._lunge_remaining)
+	if absf(toward.distance - expected_travel) > 0.15:
+		failures.append(
+			"lunge travel should be ~%.2f, got %.2f (dist=%.2f)"
+			% [expected_travel, toward.distance, flat_dist]
+		)
 
-	# 3) Full attack flow with explicit enemy targeting via nearest search
-	player.global_position = Vector3(0.0, 1.0, 0.0)
-	player._lunge_remaining = 0.0
 	player._camera_controller._euler_rotation = Vector3(0.0, PI, 0.0)
 	player._camera_controller.transform.basis = Basis.from_euler(player._camera_controller._euler_rotation)
 	for _i in 2:
 		await process_frame
 
-	start_pos = player.global_position
+	var start_pos := player.global_position
 	player._begin_attack_lunge()
-	if player._lunge_remaining < 0.05:
-		failures.append("begin_attack_lunge should pick enemy in front")
-	else:
-		for _i in 12:
-			player._apply_attack_lunge(1.0 / 60.0)
-		delta = player.global_position - start_pos
-		if delta.z < 0.35:
-			failures.append("begin_attack_lunge flow moved %.3f on Z toward enemy" % delta.z)
+	for _i in 10:
+		player._apply_attack_lunge(KatanaVisual.HIT_TIME / 10.0)
+
+	var moved_z := player.global_position.z - start_pos.z
+	if moved_z < expected_travel - 0.35:
+		failures.append("dash moved %.2f on Z, expected ~%.2f" % [moved_z, expected_travel])
+
+	var gap := Vector2(
+		enemy.global_position.x - player.global_position.x,
+		enemy.global_position.z - player.global_position.z
+	).length()
+	if gap > player.attack_lunge_stop_margin + 0.3:
+		failures.append("ended %.2f from enemy, want <= %.2f" % [gap, player.attack_lunge_stop_margin + 0.3])
 
 	if failures.is_empty():
-		print("Katana lunge verification passed (3 checks)")
+		print("Katana full lunge verification passed")
 		quit(0)
 	else:
 		for msg in failures:

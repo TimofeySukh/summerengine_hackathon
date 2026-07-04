@@ -7,22 +7,29 @@ const SLASH_DURATION := 0.28
 const HIT_TIME := 0.10
 const SLASH_PEAK := 0.32
 
-const MESH_BASIS := Basis(Vector3(0.0, -0.11, 0.0), Vector3(0.11, 0.0, 0.0), Vector3(0.0, 0.0, 0.11))
-const MESH_ORIGIN := Vector3(0.16, 0.0, -0.08)
+const MESH_SCALE := 0.038
+const MESH_BASIS := Basis(
+	Vector3(0.0, -MESH_SCALE, 0.0),
+	Vector3(MESH_SCALE, 0.0, 0.0),
+	Vector3(0.0, 0.0, MESH_SCALE)
+)
+const MESH_ORIGIN := Vector3(0.16 * MESH_SCALE / 0.11, 0.0, -0.08 * MESH_SCALE / 0.11)
+const IDLE_PIVOT_Y := PI
+const IDLE_PIVOT_Z := PI * 0.5
 
 const HAND_LAYOUT := {
 	Hand.LEFT: {
-		"idle_pos": Vector3(-0.45, -0.35, -0.50),
-		"idle_pivot": Vector3(0.0, 0.0, 0.89),
-		"cut_pos": Vector3(-0.37, -0.39, -0.42),
-		"cut_pivot": Vector3(0.0, 0.0, 0.65),
+		"idle_pos": Vector3(-0.23, -0.18, -0.42),
+		"idle_pivot": Vector3(0.0, IDLE_PIVOT_Y, IDLE_PIVOT_Z),
+		"cut_pos": Vector3(-0.14, -0.29, -0.38),
+		"cut_pivot": Vector3(0.0, IDLE_PIVOT_Y, 0.75),
 		"mirror_mesh": true,
 	},
 	Hand.RIGHT: {
-		"idle_pos": Vector3(-0.13, -0.60, -0.50),
-		"idle_pivot": Vector3(0.0, 0.0, 0.89),
-		"cut_pos": Vector3(-0.38, -0.66, -0.42),
-		"cut_pivot": Vector3(0.0, 0.0, 0.80),
+		"idle_pos": Vector3(0.25, -0.29, -0.42),
+		"idle_pivot": Vector3(0.0, IDLE_PIVOT_Y, IDLE_PIVOT_Z),
+		"cut_pos": Vector3(0.16, -0.40, -0.38),
+		"cut_pivot": Vector3(0.0, IDLE_PIVOT_Y, 0.75),
 		"mirror_mesh": false,
 	},
 }

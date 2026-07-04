@@ -19,6 +19,8 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	if _is_player_dead():
+		return
 	if not Input.is_action_just_pressed("pause"):
 		return
 	if _is_paused:
@@ -54,3 +56,8 @@ func _on_continue_pressed() -> void:
 func _on_main_menu_pressed() -> void:
 	get_tree().paused = false
 	get_tree().change_scene_to_file(MAIN_MENU_SCENE)
+
+
+func _is_player_dead() -> bool:
+	var player := get_tree().get_first_node_in_group("player")
+	return player != null and player.has_method("is_dead") and player.is_dead()

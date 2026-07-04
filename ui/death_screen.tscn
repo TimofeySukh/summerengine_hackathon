@@ -1,0 +1,90 @@
+[gd_scene format=3 uid="uid://bgl42l6tbmlc7"]
+
+[ext_resource type="Script" path="res://ui/death_screen.gd" id="1_death"]
+[ext_resource type="FontFile" uid="uid://ch2aef1jex81f" path="res://demo_page/fonts/Montserrat-Bold.ttf" id="2_font_bold"]
+[ext_resource type="FontFile" uid="uid://t50djx4didf7" path="res://demo_page/fonts/Montserrat-Medium.ttf" id="3_font_medium"]
+
+[node name="DeathScreen" type="Node"]
+process_mode = 3
+script = ExtResource("1_death")
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+process_mode = 3
+layer = 129
+
+[node name="DeathRoot" type="Control" parent="CanvasLayer"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="DimOverlay" type="ColorRect" parent="CanvasLayer/DeathRoot"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.08, 0.01, 0.02, 0.82)
+
+[node name="CenterContainer" type="CenterContainer" parent="CanvasLayer/DeathRoot"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Panel" type="PanelContainer" parent="CanvasLayer/DeathRoot/CenterContainer"]
+custom_minimum_size = Vector2(420, 0)
+layout_mode = 2
+
+[node name="MarginContainer" type="MarginContainer" parent="CanvasLayer/DeathRoot/CenterContainer/Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 48
+theme_override_constants/margin_top = 40
+theme_override_constants/margin_right = 48
+theme_override_constants/margin_bottom = 40
+
+[node name="VBox" type="VBoxContainer" parent="CanvasLayer/DeathRoot/CenterContainer/Panel/MarginContainer"]
+layout_mode = 2
+theme_override_constants/separation = 24
+alignment = 1
+
+[node name="Title" type="Label" parent="CanvasLayer/DeathRoot/CenterContainer/Panel/MarginContainer/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.22, 0.18, 1)
+theme_override_fonts/font = ExtResource("2_font_bold")
+theme_override_font_sizes/font_size = 42
+text = "YOU DIED"
+horizontal_alignment = 1
+
+[node name="Subtitle" type="Label" parent="CanvasLayer/DeathRoot/CenterContainer/Panel/MarginContainer/VBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.72, 0.78, 0.9, 1)
+theme_override_fonts/font = ExtResource("3_font_medium")
+theme_override_font_sizes/font_size = 18
+text = "The arena claims another soul."
+horizontal_alignment = 1
+
+[node name="RestartButton" type="Button" parent="CanvasLayer/DeathRoot/CenterContainer/Panel/MarginContainer/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 52)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_default_cursor_shape = 2
+theme_override_fonts/font = ExtResource("3_font_medium")
+theme_override_font_sizes/font_size = 24
+text = "Restart"
+
+[node name="MainMenuButton" type="Button" parent="CanvasLayer/DeathRoot/CenterContainer/Panel/MarginContainer/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(280, 52)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_default_cursor_shape = 2
+theme_override_fonts/font = ExtResource("3_font_medium")
+theme_override_font_sizes/font_size = 24
+text = "Main Menu"

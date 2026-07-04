@@ -14,6 +14,10 @@ var _alive := true
 var _damage_timer := 0.0
 
 
+func is_alive() -> bool:
+	return _alive
+
+
 func _physics_process(delta: float) -> void:
 	if not _alive:
 		return

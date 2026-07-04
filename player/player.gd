@@ -2,6 +2,7 @@ class_name Player extends CharacterBody3D
 
 signal weapon_switched(weapon_name: String)
 signal health_changed(current: float, maximum: float)
+signal player_died
 
 const BULLET_SCENE := preload("bullet.tscn")
 
@@ -11,12 +12,12 @@ enum WEAPON_TYPE { DEFAULT, GRENADE }
 @export var move_speed := 8.0
 ## Speed of shot bullets.
 @export var bullet_speed := 10.0
-## Maximum distance the player lunges toward a target during a katana slash.
-@export var attack_lunge_max_distance := 2.8
-## How far from the target center the lunge stops.
-@export var attack_lunge_stop_margin := 0.65
-## Forward lunge distance when no enemy is in range.
-@export var attack_lunge_fallback_distance := 1.1
+## Max range to lock onto an enemy for a katana lunge.
+@export var attack_lunge_target_range := 10.0
+## How far from the enemy center the lunge stops (melee reach).
+@export var attack_lunge_stop_margin := 0.35
+## Forward lunge distance when no enemy is targeted.
+@export var attack_lunge_fallback_distance := 1.5
 ## Movement acceleration (how fast character achieve maximum speed)
 @export var acceleration := 4.0
 ## Jump impulse
@@ -35,6 +36,8 @@ enum WEAPON_TYPE { DEFAULT, GRENADE }
 ## Grenade cooldown
 @export var grenade_cooldown := 0.5
 @export var max_health := 100.0
+## Fraction of max health restored when the player kills an enemy.
+@export_range(0.0, 1.0, 0.01) var kill_heal_percent := 0.25
 
 @onready var _rotation_root: Node3D = $CharacterRotationRoot
 @onready var _camera_controller: CameraController = $CameraController
@@ -61,9 +64,11 @@ enum WEAPON_TYPE { DEFAULT, GRENADE }
 @onready var _shoot_cooldown_tick := shoot_cooldown
 @onready var _grenade_cooldown_tick := grenade_cooldown
 
-var _lunge_direction := Vector3.ZERO
-var _lunge_remaining := 0.0
-var _lunge_speed := 0.0
+var _lunge_active := false
+var _lunge_start := Vector3.ZERO
+var _lunge_end := Vector3.ZERO
+var _lunge_elapsed := 0.0
+var _is_dead := false
 
 
 func _ready() -> void:
@@ -82,6 +87,9 @@ func _ready() -> void:
 
 
 func _physics_process(delta: float) -> void:
+	if _is_dead:
+		return
+
 	if _ground_shapecast.get_collision_count() > 0:
 		for collision_result in _ground_shapecast.collision_result:
 			_ground_height = max(_ground_height, collision_result.point.y)
@@ -106,7 +114,7 @@ func _physics_process(delta: float) -> void:
 
 	var y_velocity := velocity.y
 	velocity.y = 0.0
-	if _lunge_remaining > 0.0:
+	if _lunge_active:
 		_apply_attack_lunge(delta)
 		velocity = Vector3.ZERO
 	elif _is_katana_slashing():
@@ -189,31 +197,31 @@ func perform_katana_hit() -> void:
 
 
 func _begin_attack_lunge() -> void:
-	_lunge_direction = Vector3.ZERO
-	_lunge_remaining = 0.0
-	_lunge_speed = 0.0
+	_lunge_active = false
+	_lunge_elapsed = 0.0
 
 	var lunge := _compute_attack_lunge()
 	if lunge.distance < 0.05:
 		return
 
-	_lunge_direction = lunge.direction
-	_lunge_remaining = lunge.distance
-	_lunge_speed = lunge.distance / KatanaVisual.HIT_TIME
+	_lunge_start = global_position
+	_lunge_end = global_position + lunge.direction * lunge.distance
+	_lunge_active = true
 
 
 func _apply_attack_lunge(delta: float) -> void:
-	if _lunge_remaining <= 0.0:
+	if not _lunge_active:
 		return
 
-	var step := minf(_lunge_speed * delta, _lunge_remaining)
-	var motion := _lunge_direction * step
-	if not test_move(global_transform, motion):
-		_lunge_remaining = 0.0
-		return
+	_lunge_elapsed += delta
+	var duration := KatanaVisual.HIT_TIME
+	var t := clampf(_lunge_elapsed / duration, 0.0, 1.0)
+	t = 1.0 - pow(1.0 - t, 2.0)
+	global_position = _lunge_start.lerp(_lunge_end, t)
 
-	global_position += motion
-	_lunge_remaining -= step
+	if _lunge_elapsed >= duration:
+		global_position = _lunge_end
+		_lunge_active = false
 
 
 func _compute_attack_lunge() -> Dictionary:
@@ -224,7 +232,7 @@ func _compute_attack_lunge() -> Dictionary:
 		if body.is_in_group("damageables") and body != self:
 			return _lunge_toward_node(body, origin)
 
-	var nearest := _find_nearest_damageable(origin, attack_lunge_max_distance)
+	var nearest := _find_nearest_damageable(origin, attack_lunge_target_range)
 	if nearest != null:
 		return _lunge_toward_node(nearest, origin)
 
@@ -232,14 +240,19 @@ func _compute_attack_lunge() -> Dictionary:
 
 
 func _lunge_toward_node(target: Node3D, origin: Vector3) -> Dictionary:
-	var to_target := target.global_position - origin
+	var target_pos := target.global_position
+	if _camera_controller.get_aim_collider() == target:
+		target_pos = _camera_controller.get_aim_target()
+	target_pos.y = origin.y
+
+	var to_target := target_pos - origin
 	to_target.y = 0.0
 	var distance := to_target.length()
 	if distance < 0.05:
 		return {"direction": Vector3.ZERO, "distance": 0.0}
 
 	var direction := to_target / distance
-	var travel := clampf(distance - attack_lunge_stop_margin, 0.0, attack_lunge_max_distance)
+	var travel := maxf(0.0, distance - attack_lunge_stop_margin)
 	return {"direction": direction, "distance": travel}
 
 
@@ -250,16 +263,16 @@ func _lunge_forward(origin: Vector3, distance: float) -> Dictionary:
 		return {"direction": Vector3.ZERO, "distance": 0.0}
 
 	forward = forward.normalized()
-	var travel := _raycast_lunge_distance(origin, forward, distance)
+	var travel := _raycast_lunge_distance(origin, forward, distance, [get_rid()])
 	return {"direction": forward, "distance": travel}
 
 
-func _raycast_lunge_distance(origin: Vector3, direction: Vector3, max_distance: float) -> float:
+func _raycast_lunge_distance(origin: Vector3, direction: Vector3, max_distance: float, exclude: Array[RID] = []) -> float:
 	var space_state := get_world_3d().direct_space_state
 	var ray_origin := origin + Vector3.UP * 0.6
 	var ray_target := ray_origin + direction * max_distance
 	var ray_query := PhysicsRayQueryParameters3D.create(ray_origin, ray_target)
-	ray_query.exclude = [get_rid()]
+	ray_query.exclude = exclude
 	var hit := space_state.intersect_ray(ray_query)
 	if hit.is_empty():
 		return max_distance
@@ -343,16 +356,44 @@ func damage(_impact_point: Vector3, force: Vector3) -> void:
 
 
 func take_damage(amount: float) -> void:
+	if _is_dead:
+		return
+
 	_health = maxf(0.0, _health - amount)
 	_update_health_ui()
 	if _health <= 0.0:
-		_respawn()
+		_die()
 
 
-func _respawn() -> void:
+func _die() -> void:
+	_is_dead = true
+	_lunge_active = false
+	velocity = Vector3.ZERO
+	player_died.emit()
+
+
+func is_dead() -> bool:
+	return _is_dead
+
+
+func respawn() -> void:
+	_is_dead = false
 	global_position = _start_position
 	velocity = Vector3.ZERO
+	_lunge_active = false
+	_lunge_elapsed = 0.0
+	_katana_left.reset_pose()
+	_katana_right.reset_pose()
 	_health = max_health
+	_update_health_ui()
+
+
+func _heal_from_kill() -> void:
+	if _is_dead:
+		return
+
+	var heal_amount := max_health * kill_heal_percent
+	_health = minf(max_health, _health + heal_amount)
 	_update_health_ui()
 
 
@@ -403,7 +444,10 @@ func _damage_katana_target(target: Object, hit_position: Vector3, direction: Vec
 
 	var impact_point := hit_position - body.global_position
 	var force := direction * 14.0
+	var was_alive: bool = body.has_method("is_alive") and body.is_alive()
 	body.damage(impact_point, force)
+	if was_alive and body.has_method("is_alive") and not body.is_alive():
+		_heal_from_kill()
 	return true
 
 
