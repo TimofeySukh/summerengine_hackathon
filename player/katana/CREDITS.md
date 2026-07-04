@@ -1,6 +1,6 @@
 # Katana Asset Credits
 
-- **Model:** Katana by CreativeTrio
-- **Source:** [Poly Pizza](https://poly.pizza/m/9CCcEXCUZH)
-- **License:** CC0 (Public Domain)
+- **Model:** Katana by dook (optimized from Nick Ladd's blocks katana)
+- **Source:** [Poly Pizza](https://poly.pizza/m/zV3WXbyjMf)
+- **License:** CC BY 3.0
 - **File:** `katana.glb`

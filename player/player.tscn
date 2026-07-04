@@ -103,7 +103,7 @@ _data = {
 radius = 0.721485
 height = 2.65424
 
-[node name="Player" type="CharacterBody3D" groups=["damageables"]]
+[node name="Player" type="CharacterBody3D" groups=["damageables", "player"]]
 axis_lock_angular_x = true
 axis_lock_angular_y = true
 axis_lock_angular_z = true
@@ -165,7 +165,7 @@ mesh = SubResource("SphereMesh_uex0s")
 skeleton = NodePath("../../..")
 
 [node name="KatanaVisual" parent="CharacterRotationRoot/MeleeAnchor" instance=ExtResource("5_katana")]
-transform = Transform3D(0.707107, -0.25, 0.661438, 0, 0.935414, 0.353553, -0.707107, -0.25, 0.661438, -0.55, 1.05, -0.85)
+transform = Transform3D(0.866025, 0, 0.5, 0, 1, 0, -0.5, 0, 0.866025, 0.48, 0.9, -0.35)
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="CharacterRotationRoot/MeleeAnchor"]
 root_node = NodePath("../..")

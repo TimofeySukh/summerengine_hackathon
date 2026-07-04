@@ -31,7 +31,8 @@ Do not create assets from scratch (placeholder boxes, procedural meshes, etc.). 
 
 - First-person camera at head height (`player/camera_controller.gd`)
 - WASD movement, jump, mouse look (`player/player.gd`)
-- CC0 low-poly katana model on `MeleeAnchor` (`player/katana/katana.glb`, wrapped by `katana_visual.tscn`)
+- CC0 low-poly katana model on `MeleeAnchor` (`player/katana/katana.glb`, dook blocks katana via Poly Pizza)
+- Katana uses FPS viewmodel scale/offset and tuned materials so it reads clearly in first person
 - Melee attack via `Attack` animation and `MeleeAttackArea` hit volume (`player/melee_attack_area.gd`)
 - Character model hidden; katana visible in first person
 
@@ -59,8 +60,8 @@ Do not create assets from scratch (placeholder boxes, procedural meshes, etc.). 
 |------|------|
 | `main.tscn` | Playable level and enemy placement |
 | `player/player.gd` | Movement, attack, damage |
-| `player/katana/katana.glb` | Katana 3D model (CC0, CreativeTrio via Poly Pizza) |
-| `player/katana/katana_visual.tscn` | Katana scale and orientation for first-person view |
+| `player/katana/katana.glb` | Katana 3D model (CC BY 3.0, dook via Poly Pizza) |
+| `player/katana/katana_visual.tscn` | Katana scale, orientation, and material tuning for FPS |
 | `player/player.tscn` | Player scene, katana mount, melee hitbox |
 | `player/camera_controller.gd` | First-person camera |
 | `player/melee_attack_area.gd` | Melee damage detection |
@@ -76,3 +77,4 @@ Do not create assets from scratch (placeholder boxes, procedural meshes, etc.). 
 - Fixed inverted vertical mouse look by disabling `invert_mouse_y` on the player camera.
 - Replaced placeholder katana boxes with CC0 low-poly model from Poly Pizza (CreativeTrio).
 - Documented asset policy: prefer ready-made assets over creating placeholders.
+- Swapped stubby katana for dook blocks model; reduced FPS scale and tuned materials for readability.
