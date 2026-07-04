@@ -11,6 +11,10 @@ First-person katana combat prototype in a stylized Japanese-inspired mountain gr
 - **Design brief:** `.summer/GameSoul.md`
 - **Agent rules:** `.summer/AGENTS.md`
 
+## Asset Policy
+
+Do not create assets from scratch (placeholder boxes, procedural meshes, etc.). Always search for ready-made assets first — free libraries, CC0 packs, Summer templates. Generate or model custom assets only if nothing suitable exists and the user asks for it. See `.summer/AGENTS.md`.
+
 ## Controls
 
 | Input | Action |
@@ -71,3 +75,4 @@ First-person katana combat prototype in a stylized Japanese-inspired mountain gr
 - Added agent workflow rules to `.summer/AGENTS.md` (English in repo, local commits, doc updates).
 - Fixed inverted vertical mouse look by disabling `invert_mouse_y` on the player camera.
 - Replaced placeholder katana boxes with CC0 low-poly model from Poly Pizza (CreativeTrio).
+- Documented asset policy: prefer ready-made assets over creating placeholders.
