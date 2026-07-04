@@ -1,0 +1,9 @@
+# Godot 4+ specific ignores
+.godot/
+exports/
+bin/
+
+.env
+
+# Summer Engine local-only state
+.summer/local/
