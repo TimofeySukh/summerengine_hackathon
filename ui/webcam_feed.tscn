@@ -1,0 +1,60 @@
+[gd_scene format=3 uid="uid://bfrnyspuo4mb5"]
+
+[ext_resource type="Script" path="res://ui/webcam_feed.gd" id="1_feed"]
+[ext_resource type="Script" path="res://game/mjpeg_stream_view.gd" id="2_mjpeg"]
+
+[node name="WebcamFeed" type="Control"]
+layout_mode = 3
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -392.0
+offset_top = -248.0
+offset_right = -24.0
+offset_bottom = -24.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+script = ExtResource("1_feed")
+
+[node name="Frame" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBox" type="VBoxContainer" parent="Frame"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Header" type="HBoxContainer" parent="Frame/VBox"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Frame/VBox/Header"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.75, 0.82, 0.95, 1)
+theme_override_font_sizes/font_size = 13
+text = "CAMERA FEED"
+
+[node name="Spacer" type="Control" parent="Frame/VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="StatusLabel" type="Label" parent="Frame/VBox/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0.55, 1, 0.65, 1)
+theme_override_font_sizes/font_size = 12
+text = "CONNECTING"
+
+[node name="Feed" type="TextureRect" parent="Frame/VBox"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(360, 202)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 6
+script = ExtResource("2_mjpeg")

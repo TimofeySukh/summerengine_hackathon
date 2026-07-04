@@ -6,6 +6,7 @@
 [ext_resource type="PackedScene" uid="uid://c8deathscreen01" path="res://ui/death_screen.tscn" id="5_death"]
 [ext_resource type="Script" path="res://game/run_director.gd" id="6_director"]
 [ext_resource type="PackedScene" uid="uid://c8survivalhud01" path="res://ui/survival_hud.tscn" id="7_hud"]
+[ext_resource type="PackedScene" uid="uid://c8webcamfeed01" path="res://ui/webcam_feed.tscn" id="8_webcam"]
 
 [sub_resource type="Environment" id="Environment_night"]
 background_mode = 1
@@ -154,6 +155,8 @@ script = ExtResource("6_director")
 layer = 5
 
 [node name="SurvivalHUD" parent="SurvivalUILayer" instance=ExtResource("7_hud")]
+
+[node name="WebcamFeed" parent="SurvivalUILayer" instance=ExtResource("8_webcam")]
 
 [node name="PauseMenu" parent="." instance=ExtResource("4_pause")]
 
