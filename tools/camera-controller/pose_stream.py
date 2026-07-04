@@ -360,6 +360,10 @@ def main() -> int:
                 if got_new_frame:
                     stream_frame_no += 1
                     frames_since_report += 1
+                    if game_bridge is not None and stream_frame_no % 2 == 0:
+                        preview = encode_preview(display_frame)
+                        if preview is not None:
+                            game_bridge.send_preview(preview)
 
             if display_frame is None:
                 if not args.no_display:
