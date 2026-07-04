@@ -11,8 +11,8 @@ import urllib.request
 import numpy as np
 import sounddevice as sd
 
-DEFAULT_AUDIO_URL = "http://100.75.255.41:8081/audio.wav"
-DEFAULT_HEALTH_URL = "http://100.75.255.41:8081/health"
+DEFAULT_AUDIO_URL = "http://cph14.tailcfa96c.ts.net:8081/audio.wav"
+DEFAULT_HEALTH_URL = "http://cph14.tailcfa96c.ts.net:8081/health"
 
 
 def _read_wav_header(stream) -> tuple[int, int, int]:

@@ -22,9 +22,9 @@ from mediapipe.tasks import python as mp_tasks
 from mediapipe.tasks.python.vision import drawing_styles, drawing_utils
 from mediapipe.tasks.python import vision
 
-DEFAULT_STREAM = "http://100.75.255.41:8080/stream"
-DEFAULT_STATUS = "http://100.75.255.41:8080/state"
-DEFAULT_AUDIO = "http://100.75.255.41:8081/audio.wav"
+DEFAULT_STREAM = "http://cph14.tailcfa96c.ts.net:8080/stream"
+DEFAULT_STATUS = "http://cph14.tailcfa96c.ts.net:8080/state"
+DEFAULT_AUDIO = "http://cph14.tailcfa96c.ts.net:8081/audio.wav"
 MODEL_DIR = Path(__file__).resolve().parent / "models"
 MODEL_VARIANTS = {
     "lite": (

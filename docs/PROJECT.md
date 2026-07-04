@@ -55,6 +55,7 @@ The game currently uses the main menu theme (`mainmenu_1.ogg`) from the **Battle
 - `ui/survival_hud.tscn` shows wave, kills, time, intermission banners, and best run
 - `enemies/enemy_spawner.gd` spawns enemies on wave director command
 - Enemy death flashes red, collapses the body, and spawns the existing smoke puff VFX
+- `tools/camera-controller/` runs the real camera sidecar against the Tailscale board API (`cph14.tailcfa96c.ts.net`)
 
 ### Level
 
@@ -138,4 +139,4 @@ The game currently uses the main menu theme (`mainmenu_1.ogg`) from the **Battle
 - Player no longer instant-respawns on death; katana kills heal 25% max HP (`kill_heal_percent` on Player).
 - Reworked chaser AI: orbit slots around the player, local separation, striker/flanker/lurker roles, and one-at-a-time commit attacks.
 - Added wave survival loop (`RunDirector`), neon HUD, death-screen run stats, and katana combat feel (shake, hit-stop, slash/kill audio).
-
+- Fetched the real-camera sidecar and set its default board API host to the Tailscale MagicDNS name `cph14.tailcfa96c.ts.net`.

@@ -30,7 +30,7 @@ Select **Webcam** on the main menu, start this script, then press Play in the ga
 python pose_stream.py
 ```
 
-Defaults: stream `http://100.75.255.41:8080/stream`, status `/state`, audio `/audio.wav` on the same host.
+Defaults: stream `http://cph14.tailcfa96c.ts.net:8080/stream`, status `/state`, audio `/audio.wav` on the same host. The current Tailscale IPv4 fallback is `100.75.255.41`.
 
 Useful flags: `--no-display`, `--no-keys`, `--no-audio`, `--game-bridge`, `--complexity lite|full|heavy`.
 
