@@ -1,4 +1,4 @@
-"""Map hand slashes to left/right arrow key presses (macOS)."""
+"""Map body motion and hand slashes to game key presses (macOS)."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ import time
 from typing import Literal
 
 Hand = Literal["left", "right"]
+CameraDirection = Literal["left", "right", "none"]
 
 
 class ArrowKeyController:
@@ -16,6 +17,7 @@ class ArrowKeyController:
         self._last_press: dict[Hand, float] = {"left": 0.0, "right": 0.0}
         self.total_left = 0
         self.total_right = 0
+        self.camera_direction: CameraDirection = "none"
         self.backend = "none"
         self._pynput_key = None
         self._pynput_controller = None
@@ -61,14 +63,61 @@ class ArrowKeyController:
         return ok
 
     def _press_arrow(self, hand: Hand) -> bool:
+        key_name = "left_arrow" if hand == "left" else "right_arrow"
+        return self._tap_key(key_name)
+
+    def set_camera_motion(self, direction: CameraDirection) -> None:
+        if direction == self.camera_direction:
+            return
+
+        self.release_camera_motion()
+        self.camera_direction = direction
+        if direction == "left":
+            self._press_key("q")
+            print("MOTION Q held (camera left)")
+        elif direction == "right":
+            self._press_key("e")
+            print("MOTION E held (camera right)")
+
+    def update_camera_yaw(
+        self,
+        yaw_deg: float | None,
+        *,
+        deadzone_deg: float,
+        release_zone_deg: float,
+    ) -> None:
+        if yaw_deg is None:
+            self.set_camera_motion("none")
+            return
+
+        if self.camera_direction == "left" and yaw_deg > -release_zone_deg:
+            self.set_camera_motion("none")
+        elif self.camera_direction == "right" and yaw_deg < release_zone_deg:
+            self.set_camera_motion("none")
+        elif self.camera_direction == "none":
+            if yaw_deg <= -deadzone_deg:
+                self.set_camera_motion("left")
+            elif yaw_deg >= deadzone_deg:
+                self.set_camera_motion("right")
+
+    def release_camera_motion(self) -> None:
+        if self.camera_direction == "left":
+            self._release_key("q")
+        elif self.camera_direction == "right":
+            self._release_key("e")
+        self.camera_direction = "none"
+
+    def _tap_key(self, key_name: str) -> bool:
         if self.backend == "pynput" and self._pynput_controller is not None:
-            key = self._pynput_key.left if hand == "left" else self._pynput_key.right
+            key = self._resolve_pynput_key(key_name)
             self._pynput_controller.press(key)
             self._pynput_controller.release(key)
             return True
 
         if self.backend == "osascript" and sys.platform == "darwin":
-            code = 123 if hand == "left" else 124
+            code = self._osascript_key_code(key_name)
+            if code < 0:
+                return False
             try:
                 subprocess.run(
                     [
@@ -86,3 +135,30 @@ class ArrowKeyController:
 
         print("Arrow keys unavailable: install pynput or enable Accessibility for osascript")
         return False
+
+    def _press_key(self, key_name: str) -> bool:
+        if self.backend != "pynput" or self._pynput_controller is None:
+            return self._tap_key(key_name)
+        self._pynput_controller.press(self._resolve_pynput_key(key_name))
+        return True
+
+    def _release_key(self, key_name: str) -> bool:
+        if self.backend != "pynput" or self._pynput_controller is None:
+            return True
+        self._pynput_controller.release(self._resolve_pynput_key(key_name))
+        return True
+
+    def _resolve_pynput_key(self, key_name: str):
+        if key_name == "left_arrow":
+            return self._pynput_key.left
+        if key_name == "right_arrow":
+            return self._pynput_key.right
+        return key_name
+
+    def _osascript_key_code(self, key_name: str) -> int:
+        return {
+            "left_arrow": 123,
+            "right_arrow": 124,
+            "q": 12,
+            "e": 14,
+        }.get(key_name, -1)

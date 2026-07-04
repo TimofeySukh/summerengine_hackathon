@@ -1,6 +1,6 @@
 # Camera controller (real webcam → game input)
 
-Python bridge: reads an MJPEG stream from the board camera, runs MediaPipe Pose, tracks torso yaw and wrist slashes, and can emit arrow-key input for the game.
+Python bridge: reads an MJPEG stream from the board camera, runs MediaPipe Pose, tracks torso yaw and wrist slashes, and emits game input.
 
 ## Setup
 
@@ -32,7 +32,7 @@ python pose_stream.py
 
 Defaults: stream `http://cph14.tailcfa96c.ts.net:8080/stream`, status `/state`, audio `/audio.wav` on the same host. The current Tailscale IPv4 fallback is `100.75.255.41`.
 
-Useful flags: `--no-display`, `--no-keys`, `--no-audio`, `--game-bridge`, `--complexity lite|full|heavy`.
+Useful flags: `--no-display`, `--no-keys`, `--no-motion-keys`, `--no-audio`, `--game-bridge`, `--also-keys`, `--motion-deadzone`, `--complexity lite|full|heavy`.
 
 ## Game bridge (UDP)
 
@@ -43,16 +43,17 @@ When `--game-bridge` is on, slash and torso-yaw events go to Godot autoload `Cam
 | `{"type":"slash","hand":"left\|right"}` | Triggers left/right katana slash |
 | `{"type":"yaw","deg":12.5}` | Rotates first-person view from torso |
 
-With `--game-bridge`, local arrow-key emulation is off unless you pass `--also-keys`.
+With `--game-bridge`, local arrow-key emulation is off unless you pass `--also-keys`. Without `--game-bridge`, torso yaw can hold `Q` / `E` for camera rotation and wrist slashes tap the arrow keys.
 
 ## Modules
 
 | File | Role |
 |------|------|
-| `pose_stream.py` | Main loop: MJPEG → pose → HUD, slash FX, optional key emulation |
+| `pose_stream.py` | Main loop: MJPEG → pose → HUD, torso motion, slash FX, optional key emulation |
 | `mjpeg_reader.py` | Persistent HTTP MJPEG capture |
 | `torso_tracker.py` | Torso yaw estimate from shoulder/hip landmarks |
 | `slash_detector.py` | Wrist-speed slash detection (left/right hand) |
-| `key_controller.py` | Arrow-key emulation via pynput |
+| `key_controller.py` | Q/E camera motion and arrow-key slash emulation via pynput |
 | `game_bridge.py` | UDP sender to Godot `CameraInputBridge` (port 9847) |
+| `audio_player.py` | Board microphone WAV playback |
 | `run_for_game.sh` | Venv + `pose_stream.py --game-bridge` one-liner |

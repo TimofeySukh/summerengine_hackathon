@@ -99,6 +99,7 @@ def add_hud(
     audio_ok: bool = False,
     keys_left: int = 0,
     keys_right: int = 0,
+    motion_state: str = "none",
 ) -> None:
     cv2.putText(
         frame,
@@ -125,7 +126,7 @@ def add_hud(
         y += 20
     cv2.putText(
         frame,
-        f"arrows: left={keys_left} right={keys_right} (slash with that hand)",
+        f"motion: {motion_state} | arrows: left={keys_left} right={keys_right}",
         (8, y),
         cv2.FONT_HERSHEY_SIMPLEX,
         0.42,
@@ -157,10 +158,27 @@ def parse_args() -> argparse.Namespace:
         help="With --game-bridge, also press arrow keys locally",
     )
     parser.add_argument(
+        "--no-motion-keys",
+        action="store_true",
+        help="Disable torso-yaw Q/E camera key emulation",
+    )
+    parser.add_argument(
         "--key-cooldown",
         type=float,
         default=0.35,
         help="Seconds between arrow key presses per hand",
+    )
+    parser.add_argument(
+        "--motion-deadzone",
+        type=float,
+        default=18.0,
+        help="Torso yaw degrees before holding Q/E for camera rotation",
+    )
+    parser.add_argument(
+        "--motion-release-zone",
+        type=float,
+        default=9.0,
+        help="Torso yaw degrees below this releases held camera rotation",
     )
     parser.add_argument("--model", type=Path, default=None)
     parser.add_argument("--complexity", choices=tuple(MODEL_VARIANTS), default="lite")
@@ -286,6 +304,11 @@ def main() -> int:
         print(f"Audio: {args.audio} (single client — close ffplay/other listeners first)")
     if key_controller is not None:
         print(f"Arrow keys: left hand -> Left, right hand -> Right ({key_controller.backend})")
+        if not args.no_motion_keys:
+            print(
+                "Motion keys: torso yaw -> hold Q/E "
+                f"(deadzone {args.motion_deadzone:.0f} deg)"
+            )
 
     window_name = "Katana Pose"
     preview_w, preview_h = 640, 480
@@ -359,6 +382,12 @@ def main() -> int:
                     torso_yaw = torso_tracker.update(last_landmarks)
                     if game_bridge is not None and torso_yaw is not None:
                         game_bridge.send_yaw(torso_yaw)
+                    if key_controller is not None and not args.no_motion_keys:
+                        key_controller.update_camera_yaw(
+                            torso_yaw,
+                            deadzone_deg=args.motion_deadzone,
+                            release_zone_deg=args.motion_release_zone,
+                        )
                     slash_event = slash_detector.update(
                         last_landmarks,
                         frame_w=display_frame.shape[1],
@@ -392,6 +421,7 @@ def main() -> int:
                 audio_ok=audio_player.connected if audio_player is not None else False,
                 keys_left=key_controller.total_left if key_controller else 0,
                 keys_right=key_controller.total_right if key_controller else 0,
+                motion_state=key_controller.camera_direction if key_controller else "none",
             )
             if game_bridge is not None:
                 cv2.putText(
@@ -421,6 +451,8 @@ def main() -> int:
             elif not got_new_frame:
                 time.sleep(0.001)
     finally:
+        if key_controller is not None:
+            key_controller.release_camera_motion()
         reader.stop()
         if audio_player is not None:
             audio_player.stop()
