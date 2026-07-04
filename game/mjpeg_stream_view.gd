@@ -73,12 +73,14 @@ func _process(delta: float) -> void:
 					_phase = Phase.REQUESTING
 				else:
 					_schedule_reconnect()
+			elif _is_http_failure(status):
+				_schedule_reconnect()
 
 		Phase.REQUESTING:
-			if status == HTTPClient.STATUS_BODY or _http.has_response():
-				if status == HTTPClient.STATUS_BODY:
-					_phase = Phase.READING
-					_connected = true
+			if status == HTTPClient.STATUS_BODY:
+				_phase = Phase.READING
+			elif _is_http_failure(status):
+				_schedule_reconnect()
 
 		Phase.READING:
 			if status == HTTPClient.STATUS_BODY:
@@ -90,13 +92,19 @@ func _process(delta: float) -> void:
 					if _buffer.size() > MAX_BUFFER_BYTES:
 						_buffer = _buffer.slice(_buffer.size() - 262144)
 					_decode_available_frames()
-			elif (
-				status == HTTPClient.STATUS_DISCONNECTED
-				or status == HTTPClient.STATUS_CANT_CONNECT
-				or status == HTTPClient.STATUS_CANT_RESOLVE
-			):
+				if _frames_decoded > 0:
+					_connected = true
+			elif _is_http_failure(status):
 				_connected = false
 				_schedule_reconnect()
+
+
+func _is_http_failure(status: HTTPClient.Status) -> bool:
+	return (
+		status == HTTPClient.STATUS_DISCONNECTED
+		or status == HTTPClient.STATUS_CANT_CONNECT
+		or status == HTTPClient.STATUS_CANT_RESOLVE
+	)
 
 
 func _begin_connect() -> void:

@@ -12,6 +12,8 @@ var _has_torso_yaw := false
 var _left_hand_offset := Vector2.ZERO
 var _right_hand_offset := Vector2.ZERO
 var _has_hands := false
+var _preview_texture := ImageTexture.new()
+var _has_preview := false
 var _last_packet_ms := 0
 
 
@@ -56,6 +58,14 @@ func has_hands() -> bool:
 	return _has_hands
 
 
+func has_preview() -> bool:
+	return _has_preview and is_stream_active()
+
+
+func get_preview_texture() -> ImageTexture:
+	return _preview_texture
+
+
 func is_stream_active() -> bool:
 	return Time.get_ticks_msec() - _last_packet_ms < STALE_MS
 
@@ -64,6 +74,7 @@ func reset_session() -> void:
 	_slash_queue.clear()
 	_has_torso_yaw = false
 	_has_hands = false
+	_has_preview = false
 	_left_hand_offset = Vector2.ZERO
 	_right_hand_offset = Vector2.ZERO
 	_last_packet_ms = 0
@@ -89,6 +100,15 @@ func _parse_packet(raw: String) -> void:
 			if data.has("deg"):
 				_latest_torso_yaw = float(data["deg"])
 				_has_torso_yaw = true
+		"preview":
+			var encoded: String = str(data.get("jpg", ""))
+			if encoded.is_empty():
+				return
+			var bytes := Marshalls.base64_to_raw(encoded)
+			var image := Image.new()
+			if image.load_jpg_from_buffer(bytes) == OK:
+				_preview_texture.set_image(image)
+				_has_preview = true
 		"yaw":
 			if data.has("deg"):
 				_latest_torso_yaw = float(data["deg"])

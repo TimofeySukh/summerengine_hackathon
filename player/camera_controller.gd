@@ -3,6 +3,7 @@ class_name CameraController extends Node3D
 enum CAMERA_PIVOT { OVER_SHOULDER, THIRD_PERSON }
 
 @export var invert_mouse_y := false
+@export var invert_webcam_yaw := true
 @export_range(0.0, 1.0) var mouse_sensitivity := 0.25
 @export_range(0.0, 8.0) var joystick_sensitivity := 2.0
 
@@ -114,4 +115,6 @@ func apply_webcam_torso_yaw(torso_deg: float, delta: float) -> void:
 		_webcam_spawn_yaw = _euler_rotation.y
 
 	var offset_rad := deg_to_rad((torso_deg - _webcam_yaw_baseline) * 1.8)
+	if invert_webcam_yaw:
+		offset_rad = -offset_rad
 	_euler_rotation.y = lerp_angle(_euler_rotation.y, _webcam_spawn_yaw + offset_rad, delta * 10.0)

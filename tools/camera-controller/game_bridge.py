@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import socket
 from typing import Literal
@@ -9,6 +10,7 @@ from typing import Literal
 from hand_tracker import HandFrame
 
 Hand = Literal["left", "right"]
+MAX_PREVIEW_BYTES = 60_000
 
 
 class GameBridge:
@@ -46,3 +48,14 @@ class GameBridge:
         if yaw_deg is not None:
             payload["deg"] = round(yaw_deg, 2)
         self._send(payload)
+
+    def send_preview(self, jpeg: bytes) -> None:
+        if not jpeg or len(jpeg) > MAX_PREVIEW_BYTES:
+            return
+        self._send(
+            {
+                "v": 1,
+                "type": "preview",
+                "jpg": base64.b64encode(jpeg).decode("ascii"),
+            }
+        )

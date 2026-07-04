@@ -278,6 +278,22 @@ def detect_pose(
     return result.pose_landmarks[0]
 
 
+def encode_preview(frame_bgr: np.ndarray, *, width: int = 360) -> bytes | None:
+    h, frame_w = frame_bgr.shape[:2]
+    if frame_w <= 0:
+        return None
+    scale = width / frame_w
+    small = cv2.resize(
+        frame_bgr,
+        (width, max(1, int(h * scale))),
+        interpolation=cv2.INTER_LINEAR,
+    )
+    ok, buf = cv2.imencode(".jpg", small, [int(cv2.IMWRITE_JPEG_QUALITY), 65])
+    if not ok:
+        return None
+    return bytes(buf)
+
+
 def main() -> int:
     args = parse_args()
     print_status(args.status)
