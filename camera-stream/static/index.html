@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Arduino Modulino</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #101010;
+      color: #f5f5f5;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: #101010;
+      color: #f5f5f5;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px 16px;
+      background: #191919;
+      border-bottom: 1px solid #333;
+    }
+    h1 { margin: 0; font-size: 17px; font-weight: 650; }
+    .meta { color: #bbb; font-size: 13px; overflow-wrap: anywhere; }
+    main {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 330px;
+      gap: 14px;
+      padding: 12px;
+    }
+    .video {
+      min-width: 0;
+      display: grid;
+      place-items: center;
+      background: #050505;
+      border: 1px solid #2b2b2b;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    img {
+      width: 100%;
+      max-height: calc(100vh - 92px);
+      object-fit: contain;
+      display: block;
+    }
+    aside {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    section {
+      border: 1px solid #333;
+      border-radius: 6px;
+      background: #181818;
+      padding: 12px;
+    }
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    h2 {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 650;
+      color: #e8e8e8;
+    }
+    .source {
+      color: #9d9d9d;
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .status {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #777;
+      box-shadow: 0 0 0 1px #0008 inset;
+    }
+    .status.ok { background: #36c275; }
+    .status.bad { background: #e05d48; }
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .button {
+      height: 62px;
+      border: 1px solid #3a3a3a;
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      background: #222;
+      color: #9d9d9d;
+      font-size: 22px;
+      font-weight: 750;
+    }
+    .button.on {
+      border-color: #66d58c;
+      background: #1d3a29;
+      color: #f4fff7;
+    }
+    .axis-list {
+      display: grid;
+      gap: 8px;
+    }
+    .axis {
+      display: grid;
+      grid-template-columns: 52px minmax(0, 1fr) 72px;
+      align-items: center;
+      gap: 8px;
+      min-height: 28px;
+      font-variant-numeric: tabular-nums;
+    }
+    .axis label {
+      color: #bdbdbd;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+    .bar {
+      height: 8px;
+      border-radius: 999px;
+      background: #303030;
+      overflow: hidden;
+      position: relative;
+    }
+    .bar span {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 0;
+      background: #78aee6;
+    }
+    .axis strong {
+      text-align: right;
+      font-size: 13px;
+      font-weight: 600;
+      color: #f1f1f1;
+    }
+    .error {
+      color: #ffb3a8;
+      font-size: 12px;
+      line-height: 1.35;
+      min-height: 16px;
+      overflow-wrap: anywhere;
+    }
+    @media (max-width: 700px) {
+      header { align-items: stretch; flex-direction: column; }
+      main { grid-template-columns: 1fr; }
+      img { max-height: 52vh; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Arduino Modulino</h1>
+    <span class="meta" id="meta">480x320 low-latency · sensors connecting</span>
+  </header>
+  <main>
+    <div class="video"><img src="/stream" alt="Live camera stream"></div>
+    <aside>
+      <section>
+        <div class="section-head">
+          <h2>Buttons</h2>
+          <span class="source" id="buttons-source">missing</span>
+          <span class="status" id="buttons-status"></span>
+        </div>
+        <div class="buttons">
+          <div class="button" id="button-a">A</div>
+          <div class="button" id="button-b">B</div>
+          <div class="button" id="button-c">C</div>
+        </div>
+      </section>
+      <section>
+        <div class="section-head">
+          <h2>Gyro</h2>
+          <span class="source" id="gyro-source">missing</span>
+          <span class="status" id="gyro-status"></span>
+        </div>
+        <div class="axis-list">
+          <div class="axis" data-axis="accel.x"><label>AX</label><div class="bar"><span></span></div><strong>0.000</strong></div>
+          <div class="axis" data-axis="accel.y"><label>AY</label><div class="bar"><span></span></div><strong>0.000</strong></div>
+          <div class="axis" data-axis="accel.z"><label>AZ</label><div class="bar"><span></span></div><strong>0.000</strong></div>
+          <div class="axis" data-axis="gyro.x"><label>GX</label><div class="bar"><span></span></div><strong>0.0</strong></div>
+          <div class="axis" data-axis="gyro.y"><label>GY</label><div class="bar"><span></span></div><strong>0.0</strong></div>
+          <div class="axis" data-axis="gyro.z"><label>GZ</label><div class="bar"><span></span></div><strong>0.0</strong></div>
+        </div>
+      </section>
+      <div class="error" id="error"></div>
+    </aside>
+  </main>
+  <script>
+    const apiUrl = `${location.protocol}//${location.hostname}:8091/state`;
+    const meta = document.getElementById("meta");
+    const error = document.getElementById("error");
+    const buttonIds = { a: "button-a", b: "button-b", c: "button-c" };
+
+    function setStatus(id, ok) {
+      const node = document.getElementById(id);
+      node.classList.toggle("ok", Boolean(ok));
+      node.classList.toggle("bad", !ok);
+    }
+
+    function setBar(axis, value, scale, digits) {
+      const row = document.querySelector(`[data-axis="${axis}"]`);
+      const fill = row.querySelector("span");
+      const label = row.querySelector("strong");
+      const clamped = Math.max(-1, Math.min(1, value / scale));
+      fill.style.left = clamped < 0 ? `${50 + clamped * 50}%` : "50%";
+      fill.style.width = `${Math.abs(clamped) * 50}%`;
+      label.textContent = Number(value).toFixed(digits);
+    }
+
+    function applyState(data) {
+      const buttons = data.buttons || {};
+      const gyro = data.gyro || {};
+      document.getElementById("buttons-source").textContent = buttons.source || "missing";
+      document.getElementById("gyro-source").textContent = gyro.source || "missing";
+      setStatus("buttons-status", buttons.ok);
+      setStatus("gyro-status", gyro.ok && gyro.fresh);
+
+      for (const key of Object.keys(buttonIds)) {
+        document.getElementById(buttonIds[key]).classList.toggle("on", Boolean(buttons[key]));
+      }
+
+      const accel = gyro.accel || {};
+      const rotation = gyro.gyro || {};
+      setBar("accel.x", accel.x || 0, 2, 3);
+      setBar("accel.y", accel.y || 0, 2, 3);
+      setBar("accel.z", accel.z || 0, 2, 3);
+      setBar("gyro.x", rotation.x || 0, 250, 1);
+      setBar("gyro.y", rotation.y || 0, 250, 1);
+      setBar("gyro.z", rotation.z || 0, 250, 1);
+
+      const age = data.age_seconds == null ? "n/a" : `${Number(data.age_seconds).toFixed(2)}s`;
+      meta.textContent = `480x320 low-latency · sensors ${data.ok ? "live" : "offline"} · ${age}`;
+      error.textContent = data.error || "";
+    }
+
+    async function refresh() {
+      try {
+        const response = await fetch(apiUrl, { cache: "no-store" });
+        applyState(await response.json());
+      } catch (err) {
+        setStatus("buttons-status", false);
+        setStatus("gyro-status", false);
+        meta.textContent = "480x320 low-latency · sensors offline";
+        error.textContent = String(err);
+      }
+    }
+
+    refresh();
+    setInterval(refresh, 100);
+  </script>
+</body>
+</html>
